@@ -91,6 +91,74 @@
   }
   .meta select option{color:#26261F;}
 
+  .player-bar{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    margin-bottom:12px;
+  }
+  #playerLabel{
+    font-size:13px;
+    font-weight:600;
+    color:var(--paper);
+    flex:1;
+    min-width:0;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
+  .player-bar button{
+    background:rgba(255,255,255,.12);
+    border:1px solid rgba(255,255,255,.28);
+    color:var(--paper);
+    border-radius:7px;
+    padding:6px 11px;
+    font-family:inherit;
+    font-size:11.5px;
+    font-weight:600;
+    cursor:pointer;
+    flex-shrink:0;
+  }
+  #newRoundTop{background:var(--sand);border-color:var(--sand);color:#fff;}
+
+  .empty-round{
+    margin:26px 20px;
+    background:#fff;
+    border:1px solid var(--paper-line);
+    border-radius:14px;
+    padding:30px 22px;
+    text-align:center;
+  }
+  .er-tick{
+    width:46px;height:46px;line-height:46px;margin:0 auto 14px;
+    border-radius:50%;
+    background:var(--good);color:#fff;
+    font-size:22px;font-weight:700;
+  }
+  .er-title{
+    font-family:'Fraunces',serif;
+    font-size:19px;
+    color:var(--turf);
+    margin-bottom:6px;
+  }
+  .er-sub{
+    font-size:13px;
+    color:var(--ink-soft);
+    line-height:1.45;
+    margin-bottom:20px;
+  }
+  #startRoundBtn{
+    background:var(--turf);
+    color:#fff;
+    border:none;
+    border-radius:10px;
+    padding:13px 26px;
+    font-family:inherit;
+    font-size:14.5px;
+    font-weight:600;
+    cursor:pointer;
+  }
+
   .new-course-note{
     margin:16px 20px 0;
     background:#FFF7E6;
@@ -843,6 +911,9 @@
 
   /* six shape options on one line */
   .toggle3.tight-strip{flex-wrap:nowrap;}
+  .putt-out button{min-width:0;flex:1 1 0;padding:8px 1px;font-size:10.5px;}
+  .putt-imp{flex-wrap:nowrap;}
+  .putt-imp button{min-width:0;flex:1 1 0;padding:8px 0;font-size:9.5px;letter-spacing:-.01em;}
   .toggle3.tight-strip button{
     min-width:0;
     flex:1 1 0;
@@ -1011,8 +1082,13 @@
   <header>
     <p class="eyebrow">SCORING ZONE TRACKER</p>
     <h1>Round Card</h1>
+    <div class="player-bar">
+      <span id="playerLabel"></span>
+      <button id="editName">edit</button>
+      <button id="newRoundTop">+ New round</button>
+    </div>
     <div class="meta">
-      <input id="name" placeholder="Name" />
+      <input id="name" placeholder="Your name" style="grid-column:1 / -1; display:none" />
       <select id="courseSel" style="grid-column:1 / -1">
         <option value="">Choose course…</option>
         <option value="coombe-hill-white">Coombe Hill — White (71.6 / 121)</option>
@@ -1061,6 +1137,13 @@
 
   <div id="tab-round" class="tab-panel active">
 
+    <div id="emptyRound" class="empty-round" style="display:none">
+      <div class="er-tick">✓</div>
+      <div class="er-title" id="erTitle">Round saved to History</div>
+      <div class="er-sub" id="erSub">You can reopen it any time from the History tab.</div>
+      <button id="startRoundBtn">Start new scorecard</button>
+    </div>
+
     <div id="newCourseNote" class="new-course-note" style="display:none">
       <b>New course.</b> Enter par, yardage and stroke index on each hole as you play — the hole-type and stroke-index analysis needs them.
       To make this a permanent preset, send Claude a screenshot of the scorecard (par / yards / SI row) and it can be added for next time.
@@ -1083,7 +1166,7 @@
 
     <div id="status"></div>
     <div class="actions">
-      <button id="saveBtn">Save round</button>
+      <button id="saveBtn">Save &amp; close round</button>
       <button id="exportBtn">Export for analysis</button>
       <button id="resetBtn">New round</button>
       <button id="backupBtn">Back up all rounds</button>
@@ -1277,22 +1360,27 @@ const CLUBS = ['','Driver','3W','5W','4H','5i','6i','7i','8i','9i','PW','GW','52
 
 // zone shots = tee shot + every approach needed to reach the scoring zone
 const IMPACT1   = [['good','✓','on-check'],['thin','Thin','on-x'],['fat','Fat','on-x'],['air','Air','on-x']];
-const IMPACT2   = [['short','Short','on-x'],['long','Long','on-x'],['right','Rt','on-x'],['left','Lft','on-x'],['slice','Slice','on-x'],['hook','Hook','on-x']];
+const IMPACT2   = [['straight','Straight','on-check'],['short','Short','on-x'],['long','Long','on-x'],['right','Rt','on-x'],['left','Lft','on-x'],['slice','Slice','on-x'],['hook','Hook','on-x']];
 const ZONE_OUT  = [['target','Fwy🎯','on-check'],['rough','Rough','on-x'],['bunker','Bunker','on-x'],['trees','Trees','on-x'],['penalty','Penalty','on-x'],['oob','OOB','on-x'],['green','Green','on-check']];
 
-const GS_TYPES  = [['full','Full'],['pitch','Pitch'],['chip','Chip'],['putt','Putt'],['sand','Sand'],['air','Air'],['drop','Pen Drop']];
+const GS_TYPES  = [['full','Full'],['pitch','Pitch'],['chip','Chip'],['putt','Putt'],['sand','Sand'],['air','Air'],['penalty','Penalty'],['drop','Drop']];
 // strokes that count but are not really struck at a target
-const ZONE_KIND = [['normal','Shot','on-check'],['air','Air','on-x'],['drop','Pen Drop','on-x']];
-const isNonShot = t => t==='air' || t==='drop';
-const PUTT_TYPES= [['lag','Lag'],['short',"Short >4'"],['tap',"<4'"],['gimme','Gimme']];
-const PUTT_IMP  = [['good','✓','on-check'],['heel','Heel','on-x'],['toe','Toe','on-x'],['closed','Closed','on-x'],['open','Open','on-x']];
+const ZONE_KIND = [['normal','Shot','on-check'],['air','Air','on-x'],['penalty','Penalty','on-x'],['drop','Drop','on-x']];
+const isNonShot = t => t==='air' || t==='drop' || t==='penalty';
+const PUTT_TYPES= [['lag','Lag'],['short','Short'],['gimme','Gimme']];
+const PUTT_IMP  = [['good','✓','on-check'],['heel','Heel','on-x'],['toe','Toe','on-x'],
+                   ['closed','Closed','on-x'],['open','Open','on-x'],['thin','Thin','on-x'],['fat','Fat','on-x']];
 const PUTT_OUT1 = [['holed','Holed','on-check'],['gimme','Gimme','on-check'],['long','Long','on-x'],['short','Short','on-x']];
-const PUTT_OUT2 = [['left','Missed L','on-x'],['right','Missed R','on-x'],['mshort','Missed short','on-x'],['mlong','Missed long','on-x'],['offgreen','Off green','on-x']];
+const PUTT_MISS = [['inline','In Line','on-check'],['right','Right','on-x'],['left','Left','on-x'],['offgreen','Off Green','on-x']];
 
 const SURFACES  = [['fairway','Fwy'],['rough','Rough'],['sand','Sand']];
 const TEXTURES  = [['fluffy','Fluffy'],['tight','Tight']];
 const CONN_GS   = [['good','✓','on-check'],['thin','Thin','on-x'],['fat','Fat','on-x']];
-const RESULT_SET= [['holed','✓ Holed','on-check'],['on','On green','on-check'],['off','Off green','on-x']];
+const RESULT_SET= [['holed','✓ Holed','on-check'],['green','Green','on-check'],['target','Fwy🎯','on-check'],
+                   ['rough','Rough','on-x'],['bunker','Bunker','on-x'],['trees','Trees','on-x'],
+                   ['penalty','Penalty','on-x'],['oob','OOB','on-x']];
+// 'on' is the legacy value for "on green"
+const onGreen = r => r==='green' || r==='holed' || r==='on';
 const OUT_DIRS  = [['long','Long','on-x'],['short','Short','on-x'],['left','Left','on-x'],['right','Right','on-x']];
 const OUT_GS    = [['good','✓ Close','on-check'], ...OUT_DIRS];
 
@@ -1379,6 +1467,46 @@ function syncTeeFromZone(hole){
   else if(z.imp1==='thin'||z.imp1==='fat') hole.teeMiss = z.imp1;
 }
 
+// where the previous shot finished tells you the next shot's lie
+const LIE_FROM_OUTCOME = {
+  target:'fairway', rough:'rough', bunker:'sand', trees:'rough',
+  green:'', holed:'', penalty:'fairway', oob:'fairway'
+};
+
+function autoFillLies(hole){
+  const zs = hole.zoneShots || [];
+  const ds = hole.shots || [];
+  const applyTo = (target, prevOut) => {
+    if(!target || prevOut === undefined) return;
+    if(target.lieManual) return;                 // user overrode it, leave alone
+    const lie = LIE_FROM_OUTCOME[prevOut];
+    if(lie === undefined) return;
+    if(lie === '') return;                       // finished on the green: no lie to set
+    if(target.surface && !target.lieAuto) return; // set before auto-fill existed
+    target.surface = lie;
+    target.lieAuto = true;
+  };
+  for(let i=1;i<zs.length;i++){
+    if(zs[i].kind && zs[i].kind!=='normal') continue;
+    applyTo(zs[i], zs[i-1].out);
+  }
+  const lastZone = zs.length ? zs[zs.length-1] : null;
+  if(lastZone && ds.length && isGreenside(ds[0].type)) applyTo(ds[0], lastZone.out);
+  for(let i=1;i<ds.length;i++){
+    if(!isGreenside(ds[i].type)) continue;
+    applyTo(ds[i], ds[i-1].res);
+  }
+}
+
+// a conceded putt means the hole is over - carry that forward
+function chainGimmes(hole){
+  const ds = hole.shots || [];
+  for(let i=0;i<ds.length-1;i++){
+    const conceded = ds[i].type==='gimme' || ds[i].out1==='gimme';
+    if(conceded && (!ds[i+1].type || ds[i+1].autoType)){ ds[i+1].type = 'gimme'; ds[i+1].autoGimme = true; ds[i+1].autoType = false; }
+  }
+}
+
 function ensureZoneShots(hole){
   if(!hole.zoneShots) hole.zoneShots = [];
   const se = parseInt(hole.shotsEnter);
@@ -1459,10 +1587,16 @@ function ensureShots(hole){
   if(!isNaN(putts)){
     const gsCount = Math.max(0, n - putts);
     hole.shots.forEach((s,i) => {
-      if(s.type) return;
+      // a row you set yourself is never touched; auto-seeded rows re-seed when the
+      // shot or putt count changes, otherwise a stale guess sticks forever
+      if(s.type && !s.autoType) return;
       if(i >= gsCount){
         const puttIdx = i - gsCount, puttsLeft = n - gsCount;
-        s.type = (puttsLeft > 1 && puttIdx === 0) ? 'lag' : 'tap';
+        s.type = (puttsLeft > 1 && puttIdx === 0) ? 'lag' : 'short';
+        s.autoType = true;
+      } else if(s.autoType){
+        s.type = '';            // this row is now a greenside shot, let it be chosen
+        s.autoType = false;
       }
     });
   }
@@ -1478,13 +1612,13 @@ function greensideBand(hole){
 function syncFromShots(hole){
   const shots = (hole.shots||[]).filter(s => s.type);
   if(!shots.length) return;
-  const taps = shots.filter(s => s.type === 'tap' && s.out1);
+  const taps = shots.filter(s => (s.type === 'short' || s.type === 'tap') && s.out1);
   if(taps.length){
     hole.shortPutt = taps.some(s => s.out1 !== 'holed') ? 'x' : 'check';
   } else if(shots.some(s => s.type === 'gimme' || s.out1 === 'gimme')){
     hole.shortPutt = 'check';
   }
-  if(shots.some(s => (s.type==='lag'||s.type==='short') && s.out1 === 'holed')) hole.shortPutt = 'plus';
+  if(shots.some(s => s.type==='lag' && s.out1 === 'holed')) hole.shortPutt = 'plus';
 }
 
 function shotToggle(holeN, idx, key, opts, val, extraClass){
@@ -1533,12 +1667,11 @@ function shotRow(hole, s, i, band){
     detail = `
       <div class="shot-detail">
         <div class="shot-sub">IMPACT</div>
-        ${shotToggle(n,i,'imp',PUTT_IMP, s.imp)}
+        ${shotToggle(n,i,'imp',PUTT_IMP, s.imp,'putt-imp')}
         <div class="shot-sub">OUTCOME</div>
-        ${shotToggle(n,i,'out1',PUTT_OUT1, s.out1)}
-        ${s.out1 && s.out1!=='holed' && s.out1!=='gimme' ? `
-          <div class="shot-sub">MISS DIRECTION</div>
-          ${shotToggle(n,i,'out2',PUTT_OUT2, s.out2)}` : ''}
+        ${shotToggle(n,i,'out1',PUTT_OUT1, s.out1,'putt-out')}
+        <div class="shot-sub">MISSED</div>
+        ${shotToggle(n,i,'out2',PUTT_MISS, s.out2,'putt-out')}
         <label class="misread">
           <input type="checkbox" class="misread-box" data-hole="${n}" data-idx="${i}" ${s.misread?'checked':''} />
           Misread the line
@@ -1572,8 +1705,8 @@ function holeFlags(h){
   const putts = parseInt(h.puttsTotal)||0;
   const threePutt = putts >= 3;
   const dropped =
-    (h.zoneShots||[]).some(z => z.kind==='air' || z.kind==='drop' || z.out==='penalty' || z.out==='oob') ||
-    (h.shots||[]).some(sh => sh.type==='air' || sh.type==='drop') ||
+    (h.zoneShots||[]).some(z => (z.kind && z.kind!=='normal') || z.out==='penalty' || z.out==='oob') ||
+    (h.shots||[]).some(sh => isNonShot(sh.type)) ||
     h.teeShot==='o' || h.esz==='o' || h.sz==='o';
   return {threePutt, dropped, bad: threePutt || dropped};
 }
@@ -1614,7 +1747,7 @@ function renderHoles(){
       <button id="toggleAllBtn" data-open="${anyOpen?1:0}">${anyOpen ? 'Collapse all' : 'Expand all'}</button>
     </div>
   ` + state.holes.map(h => h.done ? compactHole(h) : `
-    <div class="hole-card">
+    <div class="hole-card" data-hole="${h.n}">
       <div class="hole-top">
         <div class="hole-id">
           <span class="n">Hole ${h.n}</span>
@@ -1632,12 +1765,6 @@ function renderHoles(){
       <div class="hole-foot top">
         <button class="done-btn" data-hole="${h.n}" data-action="done">Done ✓</button>
       </div>
-      <div class="row" style="grid-template-columns:1fr">
-        <div>
-          <div class="field-label">SHOTS TO REACH THE ZONE — tee shot and approaches</div>
-          ${zoneTable(h)}
-        </div>
-      </div>
       <div class="row">
         <div>
           <div class="field-label">ENTER ZONE — ${dist}</div>
@@ -1650,6 +1777,12 @@ function renderHoles(){
           ${toggleBtns(h,'sz')}
           <input class="shots-input" inputmode="numeric" placeholder="Shots taken" value="${h.shotsDownIn}" data-hole="${h.n}" data-field="shotsDownIn" />
           <div class="shots-cap">Target: ${downIn}</div>
+        </div>
+      </div>
+      <div class="row" style="grid-template-columns:1fr">
+        <div>
+          <div class="field-label">SHOTS TO REACH THE ZONE — tee shot and approaches</div>
+          ${zoneTable(h)}
         </div>
       </div>
       <div class="putts-row">
@@ -1691,8 +1824,12 @@ function renderHoles(){
         const hole = state.holes.find(x=>x.n === +t.dataset.hole);
         ensureZoneShots(hole);
         const z = hole.zoneShots[+t.dataset.idx];
-        if(z) z[t.dataset.key] = z[t.dataset.key] === b.dataset.val ? '' : b.dataset.val;
+        if(z){
+          if(t.dataset.key === 'surface'){ z.lieManual = true; z.lieAuto = false; }
+          z[t.dataset.key] = z[t.dataset.key] === b.dataset.val ? '' : b.dataset.val;
+        }
         syncTeeFromZone(hole);
+        autoFillLies(hole);
         rerender();
       });
     });
@@ -1727,6 +1864,7 @@ function renderHoles(){
         const band = greensideBand(hole);
         const cur = shotCat(sh, +b.dataset.idx, band);
         sh.cat = cur === 'putt' ? 'gs' : 'putt';
+        sh.autoType = false;
         sh.type=''; sh.surface=''; sh.texture=''; sh.conn=''; sh.out='';
       }
       rerender();
@@ -1760,20 +1898,32 @@ function renderHoles(){
     });
   });
 
+  // collapsing a hole shrinks the list, so pin the tapped hole in place
+  const keepAnchored = (holeN, fn) => {
+    const before = holesEl.querySelector(`[data-hole="${holeN}"]`);
+    const top = before ? before.getBoundingClientRect().top : null;
+    fn();
+    if(top === null) return;
+    const after = holesEl.querySelector(`[data-hole="${holeN}"]`);
+    if(!after) return;
+    const delta = after.getBoundingClientRect().top - top;
+    if(delta) window.scrollBy(0, delta);
+  };
+
   holesEl.querySelectorAll('[data-action="done"]').forEach(b=>{
     b.addEventListener('click', (e)=>{
       e.stopPropagation();
-      const h = state.holes.find(x=>x.n === +b.dataset.hole);
-      h.done = true;
-      rerender();
+      const holeN = +b.dataset.hole;
+      const h = state.holes.find(x=>x.n === holeN);
+      keepAnchored(holeN, ()=>{ h.done = true; rerender(); });
     });
   });
 
   holesEl.querySelectorAll('[data-action="expand"]').forEach(card=>{
     card.addEventListener('click', ()=>{
-      const h = state.holes.find(x=>x.n === +card.dataset.hole);
-      h.done = false;
-      rerender();
+      const holeN = +card.dataset.hole;
+      const h = state.holes.find(x=>x.n === holeN);
+      keepAnchored(holeN, ()=>{ h.done = false; rerender(); });
     });
   });
 
@@ -1789,12 +1939,15 @@ function renderHoles(){
           ensureShots(hole);
           const shot = hole.shots[idx];
           if(shot){
+            if(key === 'surface'){ shot.lieManual = true; shot.lieAuto = false; }
             const newVal = shot[key] === b.dataset.val ? '' : b.dataset.val;
             shot[key] = newVal;
-            if(key === 'type'){ shot.surface=''; shot.texture=''; shot.res=''; shot.out=''; }
+            if(key === 'type'){ shot.autoType = false; shot.surface=''; shot.texture=''; shot.res=''; shot.out=''; }
             if(key === 'res' && shot.res==='holed') shot.out='';
           }
           syncFromShots(hole);
+          autoFillLies(hole);
+          chainGimmes(hole);
         } else {
           const field = t.dataset.field;
           hole[field] = hole[field] === b.dataset.val ? '' : b.dataset.val;
@@ -2014,8 +2167,8 @@ function diagnose(holes, gearDownIn){
   const sandGs  = gsAll.filter(s => s.type==='sand');
   const wedgeGs = gsAll.filter(s => s.type==='full');
   const puttAll = allShots.filter(s => isPutt(s.type));
-  const lagShots = puttAll.filter(s => s.type==='lag' || s.type==='short');
-  const tapShots = puttAll.filter(s => s.type==='tap');
+  const lagShots = puttAll.filter(s => s.type==='lag');
+  const tapShots = puttAll.filter(s => s.type==='short' || s.type==='tap');
   const gimmeShots = puttAll.filter(s => s.type==='gimme' || s.out1==='gimme');
 
   const lbl = s => [s.surface,s.texture].filter(Boolean).join(' ');
@@ -2031,7 +2184,8 @@ function diagnose(holes, gearDownIn){
     const miss  = lagGraded.filter(s=>s.out1!=='gimme' && s.out1!=='holed');
     const dir = tally(miss, s=>s.out1);
     const dir2 = tally(miss, s=>s.out2);
-    const sh=dir.short||0, lo=dir.long||0, le=dir2.left||0, ri=dir2.right||0;
+    const sh=dir.short||0, lo=dir.long||0;
+    const le=dir2.left||0, ri=dir2.right||0;
     if(miss.length){
       let read, drill;
       if(sh >= lo + le + ri){
@@ -2072,9 +2226,10 @@ function diagnose(holes, gearDownIn){
     const made = tapGraded.filter(s=>s.out1==='holed');
     const missed = tapGraded.filter(s=>s.out1!=='holed');
     if(missed.length){
-      const dir = tally(missed, s=>s.out2||s.out1);
+      const dir = tally(missed, s=>s.out1);
+      const dirL = tally(missed, s=>s.out2);
       const conn = tally(missed.filter(s=>s.imp&&s.imp!=='good'), s=>s.imp);
-      const sh=(dir.mshort||0), le=dir.left||0, ri=dir.right||0;
+      const sh=dir.short||0, le=dirL.left||0, ri=dirL.right||0;
       let read, drill;
       const cTop = topKey(conn);
       if(cTop && (cTop[0]==='open'||cTop[0]==='closed')){
@@ -2099,7 +2254,7 @@ function diagnose(holes, gearDownIn){
       f.push({
         sev: missed.length >= 2 ? 'crit' : 'warn',
         title: `${missed.length} missed from inside 4ft (${made.length}/${tapGraded.length} made)`,
-        body: `Miss pattern: ${tstr(dir)}. ${read} Key 1 \u2014 the cheapest strokes on the card to win back.${gimmeShots.length ? ` (${gimmeShots.length} gimme${gimmeShots.length>1?'s':''} excluded \u2014 your real make% under tournament rules would be tested more than this.)` : ''}`,
+        body: `Miss pattern: ${tstr(dir)}${tstr(dirL)?', '+tstr(dirL):''}. ${read} Key 1 \u2014 the cheapest strokes on the card to win back.${gimmeShots.length ? ` (${gimmeShots.length} gimme${gimmeShots.length>1?'s':''} excluded \u2014 your real make% under tournament rules would be tested more than this.)` : ''}`,
         fix: drill
       });
     } else if(made.length >= 3){
@@ -2165,8 +2320,8 @@ function diagnose(holes, gearDownIn){
   const wedgeGraded = wedgeGs.filter(s=>s.res || s.out);
   if(wedgeGraded.length){
     const withRes = wedgeGraded.filter(s=>s.res);
-    const hit  = withRes.filter(s=>s.res==='on'||s.res==='holed');
-    const miss = withRes.filter(s=>s.res==='off');
+    const hit  = withRes.filter(s=>onGreen(s.res));
+    const miss = withRes.filter(s=>s.res && !onGreen(s.res));
     const posMiss = wedgeGraded.filter(s=>s.out && s.out!=='good');
     const d3 = tally(posMiss, s=>s.out);
     const sh=d3.short||0, lo=d3.long||0, le=d3.left||0, ri=d3.right||0;
@@ -2268,11 +2423,11 @@ function diagnose(holes, gearDownIn){
   const zoneAll = [];
   const nonShots = [];
   H.forEach(h => (h.zoneShots||[]).forEach((z,i) => {
-    if(z.kind==='air' || z.kind==='drop'){ nonShots.push({...z, hole:h.n, where:'zone'}); return; }
+    if(z.kind && z.kind!=='normal'){ nonShots.push({...z, hole:h.n, where:'zone'}); return; }
     if(z.club||z.imp1||z.imp2||z.out) zoneAll.push({...z, hole:h.n, idx:i, isTee:i===0, par:h.par});
   }));
   H.forEach(h => (h.shots||[]).forEach(sh => {
-    if(sh.type==='air' || sh.type==='drop') nonShots.push({...sh, hole:h.n, where:'down-in', kind:sh.type});
+    if(isNonShot(sh.type)) nonShots.push({...sh, hole:h.n, where:'down-in', kind:sh.type});
   }));
   // penalty / OOB outcomes belong in the same avoidable bucket
   const penShots = [];
@@ -2318,7 +2473,7 @@ function diagnose(holes, gearDownIn){
     const zoneTarget = Math.max(1, (parseInt(h.par)||4) - 2);   // shots allowed to reach the zone
     const usedToZone = parseInt(h.shotsEnter);
     (h.zoneShots||[]).forEach((z,i) => {
-      if(z.kind==='air' || z.kind==='drop'){ bump(z.club, 0, 'wasted'); return; }
+      if(z.kind && z.kind!=='normal'){ bump(z.club, 0, 'wasted'); return; }
       if(z.out==='penalty' || z.out==='oob'){ bump(z.club, 0, 'penalty'); return; }
       if(!z.club && !z.out) return;
       const cleanStrike = !z.imp1 || z.imp1==='good';
@@ -2331,10 +2486,10 @@ function diagnose(holes, gearDownIn){
     const downTarget = parseInt((state.gearSettings[state.currentGear]||{}).downIn) || 3;
     const usedDown = parseInt(h.shotsDownIn);
     (h.shots||[]).forEach(sh => {
-      if(sh.type==='air' || sh.type==='drop'){ bump(sh.club, 0, 'wasted'); return; }
+      if(isNonShot(sh.type)){ bump(sh.club, 0, 'wasted'); return; }
       if(!sh.club) return;
       const cleanStrike = !sh.conn || sh.conn==='good';
-      const goodOut = sh.res==='holed' || (sh.res==='on' && (!sh.out || sh.out==='good'));
+      const goodOut = sh.res==='holed' || (onGreen(sh.res) && (!sh.out || sh.out==='good'));
       if(goodOut && cleanStrike)     bump(sh.club, 1.0, 'success');
       else if(!isNaN(usedDown) && usedDown <= downTarget) bump(sh.club, 0.6, 'safe');
       else                           bump(sh.club, 0.3, 'mishit');
@@ -2380,7 +2535,7 @@ function diagnose(holes, gearDownIn){
         : `Keeping the ball in play off the tee is doing the heavy lifting for your scores.`,
       fix: pct < 60 ? `Find your go-to club (Key 10). If the driver's misses cost more than its yards gain, tee off with something you can predict.` : null
     });
-    const shape = tally(graded.filter(z=>z.imp2), z=>z.imp2);
+    const shape = tally(graded.filter(z=>z.imp2 && z.imp2!=='straight'), z=>z.imp2);
     const L=(shape.hook||0)+(shape.left||0), R=(shape.slice||0)+(shape.right||0);
     if(L>=2 && R>=2 && Math.abs(L-R)<=1){
       f.push({ sev:'crit', title:`Two-way miss off the tee (${R} right, ${L} left)`,
@@ -2623,7 +2778,8 @@ function renderAnalysisTable(){
 }
 
 function persist(){
-  state.name = document.getElementById('name').value;
+  // the name field is hidden once set, so never let an empty box wipe the saved player
+  state.name = loadPlayer() || document.getElementById('name').value;
   state.course = document.getElementById('course').value;
   state.date = document.getElementById('date').value;
   state.tee = document.getElementById('tee').value;
@@ -2641,6 +2797,99 @@ async function save(showStatus){
     }
   }catch(e){
     if(showStatus){ statusEl.textContent = 'Could not save — data kept for this session only.'; }
+  }
+}
+
+const PLAYER_KEY = 'scoring-tracker:player';
+
+function loadPlayer(){
+  try{ return localStorage.getItem(PLAYER_KEY) || ''; }catch(e){ return ''; }
+}
+function savePlayer(v){
+  try{ localStorage.setItem(PLAYER_KEY, v); }catch(e){}
+}
+
+// the round card is only shown while a round is actually in progress
+function setRoundActive(active, opts){
+  state.roundActive = active;
+  const show = active ? '' : 'none';
+  ['summary','holes','roundResults','analysisTable','newCourseNote'].forEach(id=>{
+    const el = document.getElementById(id);
+    if(el) el.style.display = active ? '' : 'none';
+  });
+  document.querySelectorAll('#tab-round .legend, #tab-round .actions, #tab-round .meta')
+    .forEach(el => { el.style.display = active ? '' : 'none'; });
+  const empty = document.getElementById('emptyRound');
+  if(empty){
+    empty.style.display = active ? 'none' : 'block';
+    if(!active && opts){
+      document.getElementById('erTitle').textContent = opts.title || 'No round in progress';
+      document.getElementById('erSub').textContent = opts.sub || 'Start a new scorecard when you tee off.';
+    }
+  }
+  const topBtn = document.getElementById('newRoundTop');
+  if(topBtn) topBtn.style.display = active ? '' : 'none';
+}
+
+function saveAndClose(){
+  const holes = state.holes || [];
+  const hasData = holes.some(h => h.score!=='' || h.esz!=='' || h.puttsTotal!=='' ||
+                    (h.shots||[]).some(x=>x.type) || (h.zoneShots||[]).some(z=>z.out));
+  if(!hasData){
+    statusEl.textContent = 'Nothing to save yet.';
+    setTimeout(()=>statusEl.textContent='', 2500);
+    return;
+  }
+  const label = [state.course || 'Round', state.date].filter(Boolean).join(' \u2014 ');
+  if(!confirm(`Save ${label} to History?`)) return;
+  upsertHistory();
+  save();
+  const scored = holes.filter(h=>h.score!=='').length;
+  const total = holes.reduce((a,h)=>a+(parseInt(h.score)||0),0);
+  freshRound();
+  setRoundActive(false, {
+    title: 'Round saved to History',
+    sub: `${label}${scored?` \u2014 ${scored} holes, ${total} shots`:''}. Reopen it any time from the History tab.`
+  });
+  renderHistory();
+}
+
+// blank card, keeping the player and their gear settings
+function freshRound(){
+  const keepGear = state.gearSettings, keepGearN = state.currentGear;
+  state = {
+    id: genId(),
+    name: loadPlayer(), course:'', date:'', tee:'', handicap:'',
+    currentGear: keepGearN,
+    gearSettings: keepGear,
+    roundActive: true,
+    holes: Array.from({length:18}, (_,i)=>({
+      n:i+1, par:'', yards:'', si:'', esz:'', sz:'', putts4:'', puttsTotal:'', score:'',
+      shotsEnter:'', shotsDownIn:'', shortPutt:'', teeShot:'', teeMiss:'',
+      done:false, zoneShots:[], shots:[]
+    }))
+  };
+  ['course','date','tee','handicap'].forEach(id=>{ document.getElementById(id).value=''; });
+  renderGearControls(); refreshCourseUI(); refreshPlayerUI();
+  renderHoles(); renderSummary(); renderRoundResults(); renderAnalysisTable();
+  save();
+}
+
+function refreshPlayerUI(){
+  const nameInput = document.getElementById('name');
+  const label = document.getElementById('playerLabel');
+  const editBtn = document.getElementById('editName');
+  const player = loadPlayer();
+  if(player){
+    state.name = player;
+    label.textContent = player;
+    nameInput.style.display = 'none';
+    editBtn.textContent = 'edit';
+  } else {
+    label.textContent = 'Who is playing?';
+    nameInput.style.display = 'block';
+    nameInput.value = '';
+    editBtn.textContent = 'save';
   }
 }
 
@@ -2848,12 +3097,17 @@ function loadFromHistory(id){
   document.getElementById('date').value = state.date || '';
   document.getElementById('tee').value = state.tee || '';
   document.getElementById('handicap').value = state.handicap || '';
+  if(!state.name) state.name = loadPlayer();
+  refreshPlayerUI();
+  const anyData = (state.holes||[]).some(h => h.score!=='' || h.esz!=='' || h.puttsTotal!=='' ||
+                    (h.shots||[]).some(x=>x.type) || (h.zoneShots||[]).some(z=>z.out)) || state.course;
   renderGearControls();
   refreshCourseUI();
   renderHoles();
   renderSummary();
-      renderRoundResults();
-      renderAnalysisTable();
+  renderRoundResults();
+  renderAnalysisTable();
+  setRoundActive(true);          // reopening from History puts it back on the card
   save();
   document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
   document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
@@ -2877,12 +3131,21 @@ async function load(){
   document.getElementById('date').value = state.date || '';
   document.getElementById('tee').value = state.tee || '';
   document.getElementById('handicap').value = state.handicap || '';
+  if(!state.name) state.name = loadPlayer();
+  refreshPlayerUI();
+  const anyData = (state.holes||[]).some(h => h.score!=='' || h.esz!=='' || h.puttsTotal!=='' ||
+                    (h.shots||[]).some(x=>x.type) || (h.zoneShots||[]).some(z=>z.out)) || state.course;
+  const active = state.roundActive !== false && !!anyData;
   renderGearControls();
   refreshCourseUI();
   renderHoles();
   renderSummary();
-      renderRoundResults();
-      renderAnalysisTable();
+  renderRoundResults();
+  renderAnalysisTable();
+  setRoundActive(active, {
+    title: 'No round in progress',
+    sub: 'Start a new scorecard when you tee off. Past rounds are in the History tab.'
+  });
 }
 
 
@@ -3072,7 +3335,8 @@ function exportRound(){
   setTimeout(()=>statusEl.textContent='', 4000);
 }
 
-document.getElementById('saveBtn').addEventListener('click', ()=> save(true));
+document.getElementById('saveBtn').addEventListener('click', saveAndClose);
+document.getElementById('startRoundBtn').addEventListener('click', ()=>{ freshRound(); setRoundActive(true); });
 document.getElementById('exportBtn').addEventListener('click', ()=>{ upsertHistory(); exportRound(); });
 // which preset a saved round came from, so the picker can show it again
 function presetKeyFor(course, tee){
@@ -3095,6 +3359,23 @@ function refreshCourseUI(){
     note.style.display = (state.course && !state.noteDismissed) ? 'block' : 'none';
   }
 }
+
+document.getElementById('resetBtn').addEventListener('click', startNewRound);
+document.getElementById('newRoundTop').addEventListener('click', startNewRound);
+
+document.getElementById('editName').addEventListener('click', ()=>{
+  const nameInput = document.getElementById('name');
+  if(nameInput.style.display === 'none'){
+    nameInput.style.display = 'block';
+    nameInput.value = loadPlayer();
+    nameInput.focus();
+    document.getElementById('editName').textContent = 'save';
+  } else {
+    const v = nameInput.value.trim();
+    if(v){ savePlayer(v); state.name = v; persist(); }
+    refreshPlayerUI();
+  }
+});
 
 document.getElementById('courseSel').addEventListener('change', (e)=>{
   const v = e.target.value;
@@ -3131,33 +3412,16 @@ document.getElementById('restoreFile').addEventListener('change', (e)=>{
   e.target.value = '';
 });
 
-document.getElementById('resetBtn').addEventListener('click', ()=>{
-  if(confirm('Start a new round? This clears the current card.')){
-    const keepGearSettings = state.gearSettings;
-    const keepGear = state.currentGear;
-    state = {
-      id: genId(),
-      name:'', course:'', date:'', tee:'', handicap:'',
-      currentGear: keepGear,
-      gearSettings: keepGearSettings,
-      holes: Array.from({length:18}, (_,i)=>({
-        n:i+1, par:'', esz:'', sz:'', putts4:'', puttsTotal:'', score:'', shotsEnter:'', shotsDownIn:'', shortPutt:'', yards:'', si:'', teeShot:'', teeMiss:'', done:false, zoneShots:[], shots:[]
-      }))
-    };
-    document.getElementById('name').value='';
-    document.getElementById('course').value='';
-    document.getElementById('date').value='';
-    document.getElementById('tee').value='';
-    document.getElementById('handicap').value='';
-    state.noteDismissed = false;
-    refreshCourseUI();
-    renderGearControls();
-    renderHoles();
-    renderSummary();
-      renderRoundResults();
-      renderAnalysisTable();
-    save();
+function startNewRound(){
+  if(confirm('Start a new round? This clears the current card without saving.')){
+    freshRound();
+    setRoundActive(true);
   }
+}
+
+document.getElementById('name').addEventListener('change', ()=>{
+  const v = document.getElementById('name').value.trim();
+  if(v){ savePlayer(v); state.name = v; persist(); refreshPlayerUI(); }
 });
 
 document.getElementById('course').addEventListener('input', ()=>{
@@ -3186,7 +3450,7 @@ document.querySelectorAll('.tab-btn').forEach(btn=>{
 if('serviceWorker' in navigator){
   window.addEventListener('load', ()=>{
     try {
-      const swCode = "\nself.addEventListener('install', e => { self.skipWaiting(); });\nself.addEventListener('activate', e => { self.clients.claim(); });\nself.addEventListener('fetch', e => {\n  if (e.request.method !== 'GET') return;\n  e.respondWith(\n    caches.open('golfscoring-v36').then(async cache => {\n      const cached = await cache.match(e.request);\n      try {\n        const res = await fetch(e.request);\n        cache.put(e.request, res.clone());\n        return res;\n      } catch (err) {\n        return cached || Response.error();\n      }\n    })\n  );\n});\n";
+      const swCode = "\nself.addEventListener('install', e => { self.skipWaiting(); });\nself.addEventListener('activate', e => { self.clients.claim(); });\nself.addEventListener('fetch', e => {\n  if (e.request.method !== 'GET') return;\n  e.respondWith(\n    caches.open('golfscoring-v43').then(async cache => {\n      const cached = await cache.match(e.request);\n      try {\n        const res = await fetch(e.request);\n        cache.put(e.request, res.clone());\n        return res;\n      } catch (err) {\n        return cached || Response.error();\n      }\n    })\n  );\n});\n";
       const blob = new Blob([swCode], {type:'application/javascript'});
       const swUrl = URL.createObjectURL(blob);
       navigator.serviceWorker.register(swUrl).catch(()=>{});
