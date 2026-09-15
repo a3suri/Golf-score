@@ -780,6 +780,30 @@
   .par-pick button:last-child{border-right:none;}
   .par-pick button.on{background:var(--turf);color:#fff;}
 
+  .hole-overview{
+    background:#F3EFE3;
+    border:1px solid var(--paper-line);
+    border-radius:10px;
+    padding:10px 11px 8px;
+    margin-bottom:12px;
+  }
+  .ov-title{
+    font-size:9px;
+    letter-spacing:.05em;
+    color:var(--ink-soft);
+    margin-bottom:8px;
+  }
+  .ov-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr 1fr;
+    gap:7px;
+  }
+  .ov-grid .field-label{font-size:9px;line-height:1.2;min-height:22px;}
+  .ov-grid .toggle3{height:auto;min-height:30px;}
+  .ov-grid .toggle3 button{min-width:0;flex:1 1 0;padding:7px 0;font-size:11px;}
+  .ov-grid .shots-input{margin-top:5px;font-size:14px;padding:7px 4px;font-weight:600;}
+  .ov-grid .shots-cap{font-size:8.5px;}
+
   .hole-foot{
     display:flex;
     justify-content:flex-end;
@@ -1606,7 +1630,10 @@ function ensureShots(hole){
 function greensideBand(hole){
   const n = parseInt(hole.shotsDownIn), putts = parseInt(hole.puttsTotal);
   if(isNaN(n)) return 99;
-  return isNaN(putts) ? n : Math.max(0, n - putts);
+  // before putts are entered, assume a 2-putt green. Treating every row as a
+  // greenside shot made people tag putt rows with a club, and a tagged row never re-seeds.
+  const p = isNaN(putts) ? Math.min(2, n) : putts;
+  return Math.max(0, n - p);
 }
 
 function syncFromShots(hole){
@@ -1765,34 +1792,33 @@ function renderHoles(){
       <div class="hole-foot top">
         <button class="done-btn" data-hole="${h.n}" data-action="done">Done ✓</button>
       </div>
-      <div class="row">
-        <div>
-          <div class="field-label">ENTER ZONE — ${dist}</div>
-          ${toggleBtns(h,'esz')}
-          <input class="shots-input" inputmode="numeric" placeholder="Shots taken" value="${h.shotsEnter}" data-hole="${h.n}" data-field="shotsEnter" />
-          <div class="shots-cap">Target: ${h.par ? Math.max(1, (parseInt(h.par)||0) - 2) : '–'} shot${h.par && Math.max(1,(parseInt(h.par)||0)-2)===1?'':'s'}${h.par ? '' : ' (enter par)'}</div>
-        </div>
-        <div>
-          <div class="field-label">DOWN IN ${downIn}</div>
-          ${toggleBtns(h,'sz')}
-          <input class="shots-input" inputmode="numeric" placeholder="Shots taken" value="${h.shotsDownIn}" data-hole="${h.n}" data-field="shotsDownIn" />
-          <div class="shots-cap">Target: ${downIn}</div>
+      <div class="hole-overview">
+        <div class="ov-title">HOLE OVERVIEW — enter all three counts first</div>
+        <div class="ov-grid">
+          <div>
+            <div class="field-label">ENTER ZONE — ${dist}</div>
+            ${toggleBtns(h,'esz')}
+            <input class="shots-input" inputmode="numeric" placeholder="Shots" value="${h.shotsEnter}" data-hole="${h.n}" data-field="shotsEnter" />
+            <div class="shots-cap">Target: ${h.par ? Math.max(1, (parseInt(h.par)||0) - 2) : '–'} shot${h.par && Math.max(1,(parseInt(h.par)||0)-2)===1?'':'s'}${h.par ? '' : ' (set par)'}</div>
+          </div>
+          <div>
+            <div class="field-label">DOWN IN ${downIn}</div>
+            ${toggleBtns(h,'sz')}
+            <input class="shots-input" inputmode="numeric" placeholder="Shots" value="${h.shotsDownIn}" data-hole="${h.n}" data-field="shotsDownIn" />
+            <div class="shots-cap">Target: ${downIn}</div>
+          </div>
+          <div>
+            <div class="field-label">TOTAL PUTTS</div>
+            ${togglePuttBtns(h)}
+            <input class="shots-input" inputmode="numeric" placeholder="Putts" value="${h.puttsTotal}" data-hole="${h.n}" data-field="puttsTotal" />
+            <div class="shots-cap">of the ${h.shotsDownIn||'–'} above</div>
+          </div>
         </div>
       </div>
       <div class="row" style="grid-template-columns:1fr">
         <div>
           <div class="field-label">SHOTS TO REACH THE ZONE — tee shot and approaches</div>
           ${zoneTable(h)}
-        </div>
-      </div>
-      <div class="putts-row">
-        <div>
-          <div class="field-label">PUTT &lt;4FT (✓ made / ✗ miss / + long make)</div>
-          ${togglePuttBtns(h)}
-        </div>
-        <div>
-          <div class="field-label">TOTAL PUTTS</div>
-          <input class="num-input" inputmode="numeric" value="${h.puttsTotal}" data-hole="${h.n}" data-field="puttsTotal" />
         </div>
       </div>
       <div class="row" style="grid-template-columns:1fr">
@@ -3450,7 +3476,7 @@ document.querySelectorAll('.tab-btn').forEach(btn=>{
 if('serviceWorker' in navigator){
   window.addEventListener('load', ()=>{
     try {
-      const swCode = "\nself.addEventListener('install', e => { self.skipWaiting(); });\nself.addEventListener('activate', e => { self.clients.claim(); });\nself.addEventListener('fetch', e => {\n  if (e.request.method !== 'GET') return;\n  e.respondWith(\n    caches.open('golfscoring-v43').then(async cache => {\n      const cached = await cache.match(e.request);\n      try {\n        const res = await fetch(e.request);\n        cache.put(e.request, res.clone());\n        return res;\n      } catch (err) {\n        return cached || Response.error();\n      }\n    })\n  );\n});\n";
+      const swCode = "\nself.addEventListener('install', e => { self.skipWaiting(); });\nself.addEventListener('activate', e => { self.clients.claim(); });\nself.addEventListener('fetch', e => {\n  if (e.request.method !== 'GET') return;\n  e.respondWith(\n    caches.open('golfscoring-v45').then(async cache => {\n      const cached = await cache.match(e.request);\n      try {\n        const res = await fetch(e.request);\n        cache.put(e.request, res.clone());\n        return res;\n      } catch (err) {\n        return cached || Response.error();\n      }\n    })\n  );\n});\n";
       const blob = new Blob([swCode], {type:'application/javascript'});
       const swUrl = URL.createObjectURL(blob);
       navigator.serviceWorker.register(swUrl).catch(()=>{});
