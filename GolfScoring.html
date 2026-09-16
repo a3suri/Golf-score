@@ -97,6 +97,15 @@
     gap:8px;
     margin-bottom:12px;
   }
+  #buildTag{
+    font-size:10px;
+    font-weight:700;
+    color:var(--turf-dark);
+    background:var(--sand);
+    border-radius:5px;
+    padding:3px 7px;
+    flex-shrink:0;
+  }
   #playerLabel{
     font-size:13px;
     font-weight:600;
@@ -1108,6 +1117,7 @@
     <h1>Round Card</h1>
     <div class="player-bar">
       <span id="playerLabel"></span>
+      <span id="buildTag">v46</span>
       <button id="editName">edit</button>
       <button id="newRoundTop">+ New round</button>
     </div>
@@ -1385,7 +1395,7 @@ const CLUBS = ['','Driver','3W','5W','4H','5i','6i','7i','8i','9i','PW','GW','52
 // zone shots = tee shot + every approach needed to reach the scoring zone
 const IMPACT1   = [['good','✓','on-check'],['thin','Thin','on-x'],['fat','Fat','on-x'],['air','Air','on-x']];
 const IMPACT2   = [['straight','Straight','on-check'],['short','Short','on-x'],['long','Long','on-x'],['right','Rt','on-x'],['left','Lft','on-x'],['slice','Slice','on-x'],['hook','Hook','on-x']];
-const ZONE_OUT  = [['target','Fwy🎯','on-check'],['rough','Rough','on-x'],['bunker','Bunker','on-x'],['trees','Trees','on-x'],['penalty','Penalty','on-x'],['oob','OOB','on-x'],['green','Green','on-check']];
+const ZONE_OUT  = [['target','Fwy🎯','on-check'],['rough','Rough','on-x'],['bunker','Bunker','on-x'],['trees','Trees','on-x'],['penalty','Penalty','on-x'],['oob','OOB','on-x'],['fringe','Fringe','on-check'],['green','Green','on-check']];
 
 const GS_TYPES  = [['full','Full'],['pitch','Pitch'],['chip','Chip'],['putt','Putt'],['sand','Sand'],['air','Air'],['penalty','Penalty'],['drop','Drop']];
 // strokes that count but are not really struck at a target
@@ -1400,11 +1410,12 @@ const PUTT_MISS = [['inline','In Line','on-check'],['right','Right','on-x'],['le
 const SURFACES  = [['fairway','Fwy'],['rough','Rough'],['sand','Sand']];
 const TEXTURES  = [['fluffy','Fluffy'],['tight','Tight']];
 const CONN_GS   = [['good','✓','on-check'],['thin','Thin','on-x'],['fat','Fat','on-x']];
-const RESULT_SET= [['holed','✓ Holed','on-check'],['green','Green','on-check'],['target','Fwy🎯','on-check'],
-                   ['rough','Rough','on-x'],['bunker','Bunker','on-x'],['trees','Trees','on-x'],
-                   ['penalty','Penalty','on-x'],['oob','OOB','on-x']];
+const RESULT_SET= [['holed','✓ Holed','on-check'],['green','Green','on-check'],['fringe','Fringe','on-check'],
+                   ['target','Fwy🎯','on-check'],['rough','Rough','on-x'],['bunker','Bunker','on-x'],
+                   ['trees','Trees','on-x'],['penalty','Penalty','on-x'],['oob','OOB','on-x']];
 // 'on' is the legacy value for "on green"
 const onGreen = r => r==='green' || r==='holed' || r==='on';
+const nearGreen = r => onGreen(r) || r==='fringe';
 const OUT_DIRS  = [['long','Long','on-x'],['short','Short','on-x'],['left','Left','on-x'],['right','Right','on-x']];
 const OUT_GS    = [['good','✓ Close','on-check'], ...OUT_DIRS];
 
@@ -1471,6 +1482,7 @@ function applyPreset(key){
   // par is what makes regulation knowable, so grade the zone now it is set
   state.holes.forEach(h => autoGrade(h,'esz','shotsEnter', Math.max(1,(parseInt(h.par)||0)-2)));
   renderHoles(); renderSummary(); renderRoundResults(); renderAnalysisTable(); persist();
+  setRoundActive(true);   // picking a course IS starting a round
   statusEl.textContent = `Loaded ${c.course} (${c.tee}) — par ${c.par.reduce((a,b)=>a+b,0)}, ${c.yards.reduce((a,b)=>a+b,0)}y.`;
   setTimeout(()=>statusEl.textContent='', 4000);
 }
@@ -1494,7 +1506,7 @@ function syncTeeFromZone(hole){
 // where the previous shot finished tells you the next shot's lie
 const LIE_FROM_OUTCOME = {
   target:'fairway', rough:'rough', bunker:'sand', trees:'rough',
-  green:'', holed:'', penalty:'fairway', oob:'fairway'
+  green:'', holed:'', fringe:'', penalty:'fairway', oob:'fairway'
 };
 
 function autoFillLies(hole){
@@ -1587,7 +1599,7 @@ function ensureShots(hole){
   if(!hole.shots) hole.shots = [];
   if(isNaN(n) || n <= 0) return hole.shots;
 
-  while(hole.shots.length < n) hole.shots.push({type:'',club:'',surface:'',texture:'',conn:'',res:'',out:'',imp:'',out1:'',out2:'',misread:false,cat:''});
+  while(hole.shots.length < n) hole.shots.push({type:'',club:'',surface:'',texture:'',conn:'',res:'',out:'',imp:'',out1:'',out2:'',misread:false,misreadSlope:false,slopeDir:'',cat:''});
   if(hole.shots.length > n) hole.shots.length = n;
 
   hole.shots.forEach(s => {
@@ -1597,6 +1609,8 @@ function ensureShots(hole){
     if(s.out1 === undefined) s.out1 = '';
     if(s.out2 === undefined) s.out2 = '';
     if(s.misread === undefined) s.misread = false;
+    if(s.misreadSlope === undefined) s.misreadSlope = false;
+    if(s.slopeDir === undefined) s.slopeDir = '';
     // legacy migrations
     if((s.out==='thin'||s.out==='fat') && !s.conn){ s.conn = s.out; s.out=''; }
     if(s.type==='fullwedge') s.type = 'full';
@@ -1703,6 +1717,11 @@ function shotRow(hole, s, i, band){
           <input type="checkbox" class="misread-box" data-hole="${n}" data-idx="${i}" ${s.misread?'checked':''} />
           Misread the line
         </label>
+        <label class="misread">
+          <input type="checkbox" class="slope-box" data-hole="${n}" data-idx="${i}" ${s.misreadSlope?'checked':''} />
+          Misread the slope
+        </label>
+        ${s.misreadSlope ? shotToggle(n,i,'slopeDir',[['up','Uphill','on-x'],['down','Downhill','on-x']], s.slopeDir) : ''}
       </div>`;
   }
 
@@ -1868,6 +1887,16 @@ function renderHoles(){
       if(sel.dataset.scope === 'zone'){ ensureZoneShots(hole); if(hole.zoneShots[idx]) hole.zoneShots[idx].club = sel.value; }
       else { ensureShots(hole); if(hole.shots[idx]) hole.shots[idx].club = sel.value; }
       persist();
+    });
+  });
+
+  holesEl.querySelectorAll('.slope-box').forEach(cb=>{
+    cb.addEventListener('change', ()=>{
+      const hole = state.holes.find(x=>x.n === +cb.dataset.hole);
+      ensureShots(hole);
+      const sh = hole.shots[+cb.dataset.idx];
+      if(sh){ sh.misreadSlope = cb.checked; if(!cb.checked) sh.slopeDir=''; }
+      rerender();
     });
   });
 
@@ -2604,6 +2633,29 @@ function diagnose(holes, gearDownIn){
   }
 
   // --- misread vs stroke on putts ---
+  const slopeMiss = puttAll.filter(s=>s.misreadSlope);
+  if(slopeMiss.length >= 2){
+    const up = slopeMiss.filter(s=>s.slopeDir==='up').length;
+    const dn = slopeMiss.filter(s=>s.slopeDir==='down').length;
+    let read, drill;
+    if(up > dn){
+      read = `Mostly UPHILL putts (${up} of ${slopeMiss.length}). Uphill putts need noticeably more pace than they look, and under-reading them leaves you short every time \u2014 which then feeds the three-putt count.`;
+      drill = `Uphill pace drill: 15 putts from 25ft straight uphill, every one must finish past the hole. You are recalibrating what "firm" feels like.`;
+    } else if(dn > up){
+      read = `Mostly DOWNHILL putts (${dn} of ${slopeMiss.length}). Downhill is where speed errors are punished hardest \u2014 run one 5ft past and the comeback is the same putt again.`;
+      drill = `Downhill control: 15 putts from 20ft downhill aiming to die at the hole, using a shorter stroke rather than a decelerating one.`;
+    } else {
+      read = `Split evenly uphill and downhill (${up}/${dn}) \u2014 you are reading slope magnitude rather than direction wrong, which is a green-reading habit rather than a stroke fault.`;
+      drill = `Read from the low side and pick a landing spot, not a line. 15 breaking putts, commit to the read before setting up.`;
+    }
+    f.push({
+      sev: slopeMiss.length >= 3 ? 'crit' : 'warn',
+      title: `${slopeMiss.length} putts where you misread the SLOPE`,
+      body: read,
+      fix: drill
+    });
+  }
+
   const misreads = puttAll.filter(s=>s.misread);
   if(misreads.length >= 2){
     const strokeMiss = puttAll.filter(s=>s.out1 && s.out1!=='holed' && s.out1!=='gimme' && !s.misread).length;
@@ -3249,7 +3301,8 @@ function buildRoundReport(){
       if(sh.imp)  bits.push(`impact ${sh.imp}`);
       if(sh.out1) bits.push(`outcome ${sh.out1}`);
       if(sh.out2) bits.push(`miss ${sh.out2}`);
-      if(sh.misread) bits.push('MISREAD');
+      if(sh.misread) bits.push('MISREAD LINE');
+      if(sh.misreadSlope) bits.push('MISREAD SLOPE' + (sh.slopeDir?' ('+sh.slopeDir+')':''));
       L.push(`      ${bits.join(', ')}`);
     });
   });
@@ -3405,6 +3458,7 @@ document.getElementById('editName').addEventListener('click', ()=>{
 
 document.getElementById('courseSel').addEventListener('change', (e)=>{
   const v = e.target.value;
+  if(v) setRoundActive(true);
   if(v === '__other'){
     state.course = '';
     state.tee = '';
@@ -3476,7 +3530,7 @@ document.querySelectorAll('.tab-btn').forEach(btn=>{
 if('serviceWorker' in navigator){
   window.addEventListener('load', ()=>{
     try {
-      const swCode = "\nself.addEventListener('install', e => { self.skipWaiting(); });\nself.addEventListener('activate', e => { self.clients.claim(); });\nself.addEventListener('fetch', e => {\n  if (e.request.method !== 'GET') return;\n  e.respondWith(\n    caches.open('golfscoring-v45').then(async cache => {\n      const cached = await cache.match(e.request);\n      try {\n        const res = await fetch(e.request);\n        cache.put(e.request, res.clone());\n        return res;\n      } catch (err) {\n        return cached || Response.error();\n      }\n    })\n  );\n});\n";
+      const swCode = "\nself.addEventListener('install', e => { self.skipWaiting(); });\nself.addEventListener('activate', e => { self.clients.claim(); });\nself.addEventListener('fetch', e => {\n  if (e.request.method !== 'GET') return;\n  e.respondWith(\n    caches.open('golfscoring-v46b').then(async cache => {\n      const cached = await cache.match(e.request);\n      try {\n        const res = await fetch(e.request);\n        cache.put(e.request, res.clone());\n        return res;\n      } catch (err) {\n        return cached || Response.error();\n      }\n    })\n  );\n});\n";
       const blob = new Blob([swCode], {type:'application/javascript'});
       const swUrl = URL.createObjectURL(blob);
       navigator.serviceWorker.register(swUrl).catch(()=>{});
