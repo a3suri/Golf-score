@@ -739,7 +739,8 @@
   }
   .shot-toggle{height:30px;}
   .shot-toggle button{font-size:11px;font-weight:600;padding:0 2px;}
-  .type-toggle button{font-size:11.5px;}
+  /* 8 down-in types: 5 on the first line, Air / Penalty / Drop together on the second */
+  .type-toggle button{font-size:11.5px;flex:1 1 20%;min-width:0;}
   .shot-empty{
     font-size:11.5px;
     color:var(--ink-soft);
@@ -853,6 +854,29 @@
     cursor:pointer;
     white-space:nowrap;
   }
+  .hole-card.done.under-par{
+    background:#E8F1FA;
+    border-color:#2F6FB5;
+  }
+  .hole-card.done.under-par .c-num{color:#1F5A96;}
+  .compact .c-score.under{color:#1F5A96;}
+  .birdie-tag{
+    display:inline-block;
+    background:#2F6FB5;
+    color:#fff;
+    font-size:8.5px;
+    font-weight:800;
+    letter-spacing:.03em;
+    padding:2px 5px;
+    border-radius:4px;
+    margin-left:5px;
+  }
+  .hole-card.under-par-open{
+    border-color:#2F6FB5;
+    border-width:2px;
+    background:#F7FAFD;
+  }
+
   .hole-card.done.flagged{
     background:#FBE9E6;
     border-color:var(--miss);
@@ -945,6 +969,10 @@
   /* six shape options on one line */
   .toggle3.tight-strip{flex-wrap:nowrap;}
   .putt-out button{min-width:0;flex:1 1 0;padding:8px 1px;font-size:10.5px;}
+  /* wrap counts for the wider strips */
+  .w4 button{min-width:0;flex:1 1 24%;padding:8px 1px;font-size:10px;}
+  .w5 button{min-width:0;flex:1 1 19%;padding:8px 1px;font-size:10px;}
+  .w2 button{min-width:0;flex:1 1 49%;padding:9px 1px;font-size:11px;}
   .putt-imp{flex-wrap:nowrap;}
   .putt-imp button{min-width:0;flex:1 1 0;padding:8px 0;font-size:9.5px;letter-spacing:-.01em;}
   .toggle3.tight-strip button{
@@ -1011,6 +1039,96 @@
     padding-bottom:10px;
     border-top:none;
     border-bottom:1px solid var(--paper-line);
+  }
+
+  .circle-tick{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    border:1.5px solid var(--paper-line);
+    border-radius:8px;
+    padding:7px 11px;
+    font-size:12.5px;
+    font-weight:700;
+    color:var(--ink-soft);
+    background:#fff;
+    cursor:pointer;
+  }
+  .circle-tick input{width:18px;height:18px;accent-color:#3C7A52;}
+  .circle-tick.on{border-color:#3C7A52;background:#EAF2EC;color:#2F5138;}
+
+  .circle-hint{
+    font-size:9.5px;
+    color:var(--turf);
+    background:#EAF2EC;
+    border-radius:5px;
+    padding:3px 7px;
+    margin-top:3px;
+    display:inline-block;
+  }
+
+  .shot-grid{
+    display:grid;
+    grid-template-columns:52px 1fr;
+    gap:3px 6px;
+    align-items:start;
+  }
+  .g-lbl{
+    padding-top:5px;
+    text-align:right;
+    line-height:1.15;
+  }
+  .g-lbl b{
+    display:block;
+    font-size:11px;
+    font-weight:800;
+    color:var(--turf);
+  }
+  .g-lbl span{
+    display:block;
+    font-size:8.5px;
+    letter-spacing:.02em;
+    color:var(--ink-soft);
+  }
+  .g-ctl{min-width:0;}
+  .g-ctl .toggle3{margin-bottom:3px;}
+  .g-ctl .toggle3:last-child{margin-bottom:0;}
+  .toggle3.grp{
+    flex-wrap:nowrap;
+    height:auto;
+    min-height:0;
+  }
+  .toggle3.grp button{
+    min-width:0;
+    flex:1 1 0;
+    padding:7px 1px;
+    font-size:10px;
+    line-height:1.1;
+  }
+  /* tighter rows now that labels moved out of the flow */
+  .shot-row{padding:7px 8px;gap:6px;}
+  .shot-club{width:56px;}
+  .shot-title{font-size:11.5px;margin-bottom:4px;}
+  .shot-detail{gap:3px;}
+
+  .sec-head{
+    font-size:9.5px;
+    font-weight:800;
+    letter-spacing:.06em;
+    color:var(--turf);
+    background:#EDE7D8;
+    border-radius:5px;
+    padding:4px 7px;
+    margin:9px 0 5px;
+  }
+  .tee-chip{
+    display:inline-block;
+    background:var(--turf);
+    color:#fff;
+    font-size:11px;
+    font-weight:700;
+    border-radius:7px;
+    padding:7px 16px;
   }
 
   .shot-sub{
@@ -1117,7 +1235,7 @@
     <h1>Round Card</h1>
     <div class="player-bar">
       <span id="playerLabel"></span>
-      <span id="buildTag">v46</span>
+      <span id="buildTag">v61</span>
       <button id="editName">edit</button>
       <button id="newRoundTop">+ New round</button>
     </div>
@@ -1392,99 +1510,71 @@ function togglePuttBtns(hole){
 
 const CLUBS = ['','Driver','3W','5W','4H','5i','6i','7i','8i','9i','PW','GW','52°','SW','LW','Putter'];
 
-// zone shots = tee shot + every approach needed to reach the scoring zone
-const IMPACT1   = [['good','✓','on-check'],['thin','Thin','on-x'],['fat','Fat','on-x'],['air','Air','on-x']];
-const IMPACT2   = [['straight','Straight','on-check'],['short','Short','on-x'],['long','Long','on-x'],['right','Rt','on-x'],['left','Lft','on-x'],['slice','Slice','on-x'],['hook','Hook','on-x']];
-const ZONE_OUT  = [['target','Fwy🎯','on-check'],['rough','Rough','on-x'],['bunker','Bunker','on-x'],['trees','Trees','on-x'],['penalty','Penalty','on-x'],['oob','OOB','on-x'],['fringe','Fringe','on-check'],['green','Green','on-check']];
+// ---- unified capture model: every non-putt shot uses the same 7 strips ----
+const TARGETS   = [['green','Green ⛳️','on-check'],['fairway','Fairway','on-check'],['layup','Lay Up','on-check'],['recovery','Recovery','on-check']];
+const SURFACES  = [['fairway','Fairway'],['fringe','Fringe'],['rough','Rough'],['sand','Sand'],['trees','Trees 🌳','on-x']];
+const SURF_ROWS = [5];
+const TEXTURES  = [['good','Good','on-check'],['fluffy','Fluffy'],['tight','Tight'],['deep','Deep','on-x']];
+const SHOT_KIND = [['full','Full'],['punch','Punch'],['pitch','Pitch'],['chip','Chip'],['putt','Putt'],
+                   ['bunker','Bunker 🏖'],['drop','Drop ⤵️','on-x'],['penalty','Penalty 💧','on-x'],['air','Air','on-x']];
+const KIND_ROWS = [5,4];
+const IMPACTS   = [['good','✓','on-check'],['heel','Heel','on-x'],['toe','Toe','on-x'],['air','Air','on-x'],
+                   ['thin','Thin','on-x'],['fat','Fat','on-x'],['skull','Skull 💀','on-x'],['duff','Duff','on-x']];
+const IMPACT_ROWS = [4,4];
+const SHAPES    = [['straight','⬆️','on-check'],['push','Push ↗️','on-x'],['pull','Pull ↖️','on-x'],
+                   ['slice','Slice ➡️','on-x'],['hook','Hook ⬅️','on-x'],['skidder','Skid 🚂','on-x'],['skyer','Sky ☁️','on-x']];
+const SHAPE_ROWS = [3,4];
+const POSITIONS = [['good','✅','on-check'],['high','🚩High','on-check'],['long','Long','on-x'],
+                   ['short','Short','on-x'],['flub','Flub ~0','on-x'],
+                   ['straight','Straight','on-check'],['right','Right','on-x'],['left','Left','on-x']];
+const POS_ROWS = [4,4];
+const OUTCOMES  = [['green','Green ⛳️','on-check'],['fringe','Fringe','on-check'],['fairway','Fairway','on-check'],
+                   ['rough','Rough','on-x'],['bunker','Bunker 🏖','on-x'],['trees','Trees 🌳','on-x'],
+                   ['penalty','Penalty 💧','on-x'],['oob','OOB ⛔️','on-x']];
+const OUT_ROWS = [4,4];
+// only when the ball finished on the green
+const GREEN_POS = [['holed','Holed','on-check'],['close','⭕️<3y','on-check'],['high','🚩High','on-check'],
+                   ['long','Long','on-x'],['short','Short','on-x'],['flub','Flub ~0','on-x'],
+                   ['right','Right','on-x'],['left','Left','on-x']];
+const GREENPOS_ROWS = [4,4];
 
-const GS_TYPES  = [['full','Full'],['pitch','Pitch'],['chip','Chip'],['putt','Putt'],['sand','Sand'],['air','Air'],['penalty','Penalty'],['drop','Drop']];
-// strokes that count but are not really struck at a target
-const ZONE_KIND = [['normal','Shot','on-check'],['air','Air','on-x'],['penalty','Penalty','on-x'],['drop','Drop','on-x']];
-const isNonShot = t => t==='air' || t==='drop' || t==='penalty';
 const PUTT_TYPES= [['lag','Lag'],['short','Short'],['gimme','Gimme']];
 const PUTT_IMP  = [['good','✓','on-check'],['heel','Heel','on-x'],['toe','Toe','on-x'],
                    ['closed','Closed','on-x'],['open','Open','on-x'],['thin','Thin','on-x'],['fat','Fat','on-x']];
-const PUTT_OUT1 = [['holed','Holed','on-check'],['gimme','Gimme','on-check'],['long','Long','on-x'],['short','Short','on-x']];
+const PUTT_OUT1 = [['holed','Holed','on-check'],['gimme','Gimme','on-check'],['close',"⭕️<4'",'on-check'],
+                   ['high','🚩High','on-check'],['long','Long','on-x'],['short','Short','on-x'],
+                   ['flub','Flub ~0','on-x'],['right','Right','on-x'],['left','Left','on-x']];
+const PUTTOUT_ROWS = [4,3,2];
 const PUTT_MISS = [['inline','In Line','on-check'],['right','Right','on-x'],['left','Left','on-x'],['offgreen','Off Green','on-x']];
 
-const SURFACES  = [['fairway','Fwy'],['rough','Rough'],['sand','Sand']];
-const TEXTURES  = [['fluffy','Fluffy'],['tight','Tight']];
-const CONN_GS   = [['good','✓','on-check'],['thin','Thin','on-x'],['fat','Fat','on-x']];
-const RESULT_SET= [['holed','✓ Holed','on-check'],['green','Green','on-check'],['fringe','Fringe','on-check'],
-                   ['target','Fwy🎯','on-check'],['rough','Rough','on-x'],['bunker','Bunker','on-x'],
-                   ['trees','Trees','on-x'],['penalty','Penalty','on-x'],['oob','OOB','on-x']];
-// 'on' is the legacy value for "on green"
-const onGreen = r => r==='green' || r==='holed' || r==='on';
-const nearGreen = r => onGreen(r) || r==='fringe';
-const OUT_DIRS  = [['long','Long','on-x'],['short','Short','on-x'],['left','Left','on-x'],['right','Right','on-x']];
-const OUT_GS    = [['good','✓ Close','on-check'], ...OUT_DIRS];
+const DIST_BANDS = [['d200','200y+'],['d150','150–200'],['d100','100–150'],['d50','50–100'],['d0','≤50y']];
+const SHORTSIDE  = [['no','Fat side','on-check'],['yes','Short-sided','on-x']];
+const COMMITTED  = [['yes','Committed','on-check'],['no','Not sure','on-x']];
+const DIST_LABEL = {d200:'200y+', d150:'150-200y', d100:'100-150y', d50:'50-100y', d0:'≤50y'};
 
-const isGreenside = t => t==='full' || t==='pitch' || t==='chip' || t==='sand' || t==='putt';
-const isPutt      = t => t==='lag' || t==='short' || t==='tap' || t==='gimme';
-
-const COURSE_PRESETS = {
-  'coombe-hill-white': {
-    course:'Coombe Hill', tee:'White', rating:71.6, slope:121,
-    par:   [4,4,4,5,5,3,4,4,3, 4,4,3,4,4,5,4,3,4],
-    si:    [17,7,3,9,5,15,11,1,13, 6,2,12,16,8,14,4,18,10],
-    yards: [316,364,410,492,451,176,347,413,184, 436,407,187,337,338,494,396,142,387]
-  },
-  'coombe-hill-yellow': {
-    course:'Coombe Hill', tee:'Yellow', rating:70.6, slope:118,
-    par:   [4,4,4,5,5,3,4,4,3, 4,4,3,4,4,5,4,3,4],
-    si:    [17,7,3,9,5,15,11,1,13, 6,2,12,16,8,14,4,18,10],
-    yards: [290,340,400,458,445,161,330,396,164, 424,391,165,320,315,487,380,128,371]
-  },
-  'malden-black': {
-    course:'Malden', tee:'Black', rating:73.3, slope:96,
-    par:   [4,3,4,3,4,4,4,4,4, 5,4,3,4,3,5,5,4,4],
-    si:    [17,15,3,11,13,9,7,1,5, 12,4,16,2,10,14,6,18,8],
-    yards: [328,162,437,164,333,376,343,460,423, 474,387,150,425,176,489,508,277,383]
-  },
-  'el-valle-yellow': {
-    course:'El Valle (Murcia)', tee:'Yellow', rating:71.0, slope:120,
-    par:   [4,4,5,4,4,3,5,4,3, 4,4,3,4,4,3,5,4,4],
-    si:    [8,2,5,16,10,13,6,7,9, 17,18,11,1,14,15,3,12,4],
-    yards: [341,437,495,343,331,199,557,348,182, 338,284,179,362,308,172,541,390,352]
-  },
-  'rac-old-yellow': {
-    course:'RAC Old Course', tee:'Yellow', rating:73.7, slope:100,
-    par:   [4,4,3,5,4,4,4,4,4, 5,4,4,3,4,4,4,3,5],
-    si:    [11,7,5,15,17,1,13,3,9, 12,6,4,18,16,2,8,14,10],
-    yards: [378,355,177,470,291,437,352,453,399, 441,345,329,136,311,360,364,132,506]
-  },
-  'rac-coronation-yellow': {
-    course:'RAC Coronation', tee:'Yellow', rating:70.1, slope:105,
-    par:   [4,3,4,3,4,4,4,5,4, 4,5,3,4,4,3,4,4,4],
-    si:    [6,14,8,18,12,16,2,10,4, 11,7,5,13,1,15,3,17,9],
-    yards: [336,184,320,129,324,322,393,498,405, 317,503,189,324,423,182,349,348,364]
-  },
-  'coombe-wood-yellow': {
-    course:'Coombe Wood', tee:'Yellow', rating:65.4, slope:94,
-    par:   [5,4,3,4,3,4,4,3,4, 3,4,3,4,3,4,4,3,4],
-    si:    [11,15,3,7,13,1,17,5,9, 12,4,14,2,16,6,18,8,10],
-    yards: [482,352,199,350,174,416,320,203,285, 141,385,172,425,126,282,274,136,378]
-  }
+// scoring-zone distance bands, each with the target circle a good shot should finish inside
+const ZONE_DIST  = [['z100','100–50y'],['z50','50–25y'],['z25','≤25y']];
+const ZONE_CIRCLE = {                      // diameter / radius in yards
+  z100:{d:10, r:5, label:'100–50y'},
+  z50: {d:6,  r:3, label:'50–25y'},
+  z25: {d:4,  r:2, label:'≤25y'}
 };
+const LAG_CIRCLE = {d:4, r:2};
 
-function applyPreset(key){
-  const c = COURSE_PRESETS[key];
-  if(!c) return;
-  state.course = c.course;
-  state.tee = c.tee;
-  state.holes.forEach((h,i) => {
-    h.par = String(c.par[i]);
-    h.si = String(c.si[i]);
-    h.yards = String(c.yards[i]);
-  });
-  document.getElementById('course').value = c.course;
-  document.getElementById('tee').value = c.tee;
-  // par is what makes regulation knowable, so grade the zone now it is set
-  state.holes.forEach(h => autoGrade(h,'esz','shotsEnter', Math.max(1,(parseInt(h.par)||0)-2)));
-  renderHoles(); renderSummary(); renderRoundResults(); renderAnalysisTable(); persist();
-  setRoundActive(true);   // picking a course IS starting a round
-  statusEl.textContent = `Loaded ${c.course} (${c.tee}) — par ${c.par.reduce((a,b)=>a+b,0)}, ${c.yards.reduce((a,b)=>a+b,0)}y.`;
-  setTimeout(()=>statusEl.textContent='', 4000);
+const NON_SHOT_KINDS = ['drop','penalty','air'];
+const isNonShot   = t => NON_SHOT_KINDS.includes(t);
+const isPutt      = t => t==='lag' || t==='short' || t==='gimme' || t==='tap';
+const isGreenside = t => !!t && !isPutt(t) && !isNonShot(t);
+const onGreen     = r => r==='green' || r==='holed' || r==='on';
+const goodImpact  = i => !i || i==='good';
+// did the ball finish where it was aimed?
+function targetHit(target, outcome){
+  if(!target || !outcome) return null;
+  if(target==='green')    return outcome==='green';
+  if(target==='fairway')  return outcome==='fairway' || outcome==='green';
+  if(target==='layup')    return outcome==='fairway' || outcome==='green' || outcome==='fringe';
+  if(target==='recovery') return outcome==='fairway' || outcome==='rough' || outcome==='green' || outcome==='fringe';
+  return null;
 }
 
 function ordinal(i){
@@ -1496,17 +1586,19 @@ function ordinal(i){
 // the old tee ✓/✗/O marker is now derived from the tee shot's outcome
 function syncTeeFromZone(hole){
   const z = (hole.zoneShots||[])[0];
-  if(!z || !z.out) return;
-  hole.teeShot = (z.out==='green'||z.out==='target') ? 'check' : (z.out==='penalty'||z.out==='oob') ? 'o' : 'x';
-  const map = {slice:'slice',hook:'hook',thin:'thin',fat:'fat',left:'pull',right:'push'};
-  if(z.imp2 && map[z.imp2]) hole.teeMiss = map[z.imp2];
-  else if(z.imp1==='thin'||z.imp1==='fat') hole.teeMiss = z.imp1;
+  if(!z || !z.outcome) return;
+  const good = z.outcome==='fairway' || z.outcome==='green' || z.outcome==='fringe';
+  hole.teeShot = good ? 'check' : (z.outcome==='penalty'||z.outcome==='oob') ? 'o' : 'x';
+  const shapeMap = {slice:'slice',hook:'hook',pull:'pull',push:'push'};
+  if(z.shape && shapeMap[z.shape]) hole.teeMiss = shapeMap[z.shape];
+  else if(z.impact==='thin'||z.impact==='skull') hole.teeMiss = 'thin';
+  else if(z.impact==='fat'||z.impact==='duff') hole.teeMiss = 'fat';
 }
 
 // where the previous shot finished tells you the next shot's lie
 const LIE_FROM_OUTCOME = {
-  target:'fairway', rough:'rough', bunker:'sand', trees:'rough',
-  green:'', holed:'', fringe:'', penalty:'fairway', oob:'fairway'
+  fairway:'fairway', target:'fairway', rough:'rough', bunker:'sand', trees:'trees',
+  fringe:'fringe', green:'', holed:'', penalty:'fairway', oob:'fairway'
 };
 
 function autoFillLies(hole){
@@ -1523,14 +1615,14 @@ function autoFillLies(hole){
     target.lieAuto = true;
   };
   for(let i=1;i<zs.length;i++){
-    if(zs[i].kind && zs[i].kind!=='normal') continue;
-    applyTo(zs[i], zs[i-1].out);
+    if(isNonShot(zs[i].type)) continue;
+    applyTo(zs[i], zs[i-1].outcome);
   }
   const lastZone = zs.length ? zs[zs.length-1] : null;
-  if(lastZone && ds.length && isGreenside(ds[0].type)) applyTo(ds[0], lastZone.out);
+  if(lastZone && ds.length && isGreenside(ds[0].type)) applyTo(ds[0], lastZone.outcome);
   for(let i=1;i<ds.length;i++){
     if(!isGreenside(ds[i].type)) continue;
-    applyTo(ds[i], ds[i-1].res);
+    applyTo(ds[i], ds[i-1].outcome);
   }
 }
 
@@ -1547,7 +1639,7 @@ function ensureZoneShots(hole){
   if(!hole.zoneShots) hole.zoneShots = [];
   const se = parseInt(hole.shotsEnter);
   const n = isNaN(se) ? 0 : Math.max(0, se);
-  while(hole.zoneShots.length < n) hole.zoneShots.push({club:'',kind:'normal',surface:'',texture:'',imp1:'',imp2:'',out:''});
+  while(hole.zoneShots.length < n) hole.zoneShots.push({club:'',target:'',surface:'',texture:'',type:'',impact:'',shape:'',position:'',outcome:'',greenPos:'',dist:'',shortSide:'',committed:''});
   if(hole.zoneShots.length > n) hole.zoneShots.length = n;
   return hole.zoneShots;
 }
@@ -1564,6 +1656,95 @@ function zTog(holeN, idx, key, opts, val, extra){
   </div>`;
 }
 
+// every non-putt shot captures the same seven dimensions
+// split one option list into fixed-size rows so opposites stay side by side
+function togRows(scope, holeN, i, key, list, val, rows){
+  const cls = scope==='zone' ? 'zone-toggle' : 'shot-toggle';
+  let at = 0;
+  const groups = (rows||[list.length]).map(n => list.slice(at, at += n)).filter(g=>g.length);
+  return groups.map(g =>
+    `<div class="toggle3 ${cls} grp" data-hole="${holeN}" data-idx="${i}" data-key="${key}">
+      ${g.map(o=>`<button data-val="${o[0]}" class="${val===o[0]?(o[2]||'on-lie'):''}">${o[1]}</button>`).join('')}
+    </div>`).join('');
+}
+
+// relabel the 'close' option so it names the actual target circle for this distance
+// did this shot finish inside its target circle? tick is the source of truth once set;
+// until then it follows the outcome so the box fills itself in
+function circleDerived(sh){
+  if(sh.type==='lag') return ['holed','gimme','close','high'].includes(sh.out1);
+  if(isGreenside(sh.type)) return sh.outcome==='green' && (sh.greenPos==='holed' || sh.greenPos==='close');
+  return false;
+}
+function inCircle(sh){
+  return sh.inCircleManual ? !!sh.inCircle : circleDerived(sh);
+}
+function circleBox(holeN, i, sh){
+  return `<label class="circle-tick ${inCircle(sh)?'on':''}">
+    <input type="checkbox" class="circle-box" data-hole="${holeN}" data-idx="${i}" ${inCircle(sh)?'checked':''} />
+    In 🎯 ⭕️
+  </label>`;
+}
+
+function greenPosFor(scope, dist){
+  const c = scope==='down' ? ZONE_CIRCLE[dist] : null;
+  if(!c) return GREEN_POS;
+  return GREEN_POS.map(o => o[0]==='close' ? ['close', `⭕️ ≤${c.r}y`, 'on-check'] : o);
+}
+
+function puttOutFor(type){
+  if(type !== 'lag') return PUTT_OUT1;
+  return PUTT_OUT1.map(o => o[0]==='close' ? ['close', `⭕️ ≤${LAG_CIRCLE.r}y`, 'on-check'] : o);
+}
+
+function shotStrips(scope, holeN, i, sh, opts){
+  const R = (key, list, val, rows) => togRows(scope, holeN, i, key, list, val, rows);
+  const kind = sh.type || '';
+  const isTee = opts && opts.isTee;
+  // label in the left gutter, controls fill the rest of the width
+  const row = (label, controls) => `<div class="g-lbl">${label}</div><div class="g-ctl">${controls}</div>`;
+
+  if(isNonShot(kind)){
+    return `<div class="shot-grid">
+      ${row('<b>B</b><span>Shot</span>', R('type',SHOT_KIND,sh.type,KIND_ROWS))}
+      ${row('', `<div class="shot-sub">${
+        kind==='air' ? 'Air shot — a stroke, ball not advanced.'
+        : kind==='drop' ? 'Drop — a stroke, nothing struck.'
+        : 'Penalty — a stroke paid for trouble.'}</div>`)}
+    </div>`;
+  }
+
+  return `<div class="shot-grid">
+    ${isTee ? '' : row('<b>A</b><span>Lie</span>',
+        R('surface',SURFACES,sh.surface,SURF_ROWS) + R('texture',TEXTURES,sh.texture))}
+    ${scope==='down'
+      ? row('<span>Dist</span>', R('dist',ZONE_DIST,sh.dist) +
+          (ZONE_CIRCLE[sh.dist] ? `<div class="circle-hint">🎯 ${ZONE_CIRCLE[sh.dist].d}y ⭕️ &middot; finish within ${ZONE_CIRCLE[sh.dist].r}y</div>` : ''))
+      : row(isTee ? '<b>A</b><span>Dist</span>' : '<span>Dist</span>', R('dist',DIST_BANDS,sh.dist))}
+
+    ${row('<b>B</b><span>Target</span>', R('target',TARGETS,sh.target))}
+    ${row('<span>Shot</span>', R('type',SHOT_KIND,sh.type,KIND_ROWS))}
+
+    ${row('<b>C</b><span>Impact</span>', R('impact',IMPACTS,sh.impact,IMPACT_ROWS))}
+    ${row('<span>Shape</span>', R('shape',SHAPES,sh.shape,SHAPE_ROWS))}
+    ${row('<span>Sure?</span>', R('committed',COMMITTED,sh.committed))}
+
+    ${row('<b>D</b><span>Pos vs 🎯</span>', R('position',POSITIONS,sh.position,POS_ROWS))}
+    ${row('<span>Result</span>', R('outcome',OUTCOMES,sh.outcome,OUT_ROWS))}
+    ${sh.outcome==='green' ? row('<span>On green</span>', R('greenPos',greenPosFor(scope, sh.dist),sh.greenPos,GREENPOS_ROWS)) : ''}
+    ${['fringe','rough','bunker','trees'].includes(sh.outcome)
+      ? row('<span>Side</span>', R('shortSide',SHORTSIDE,sh.shortSide)) : ''}
+    ${scope==='down' ? row('<span>Score</span>', circleBox(holeN, i, sh)) : ''}
+  </div>`;
+}
+
+function tog(scope, holeN, i, key, list, val, extra){
+  const cls = scope==='zone' ? 'zone-toggle' : 'shot-toggle';
+  return `<div class="toggle3 ${cls} ${extra||''}" data-hole="${holeN}" data-idx="${i}" data-key="${key}">
+    ${list.map(o=>`<button data-val="${o[0]}" class="${val===o[0]?(o[2]||'on-lie'):''}">${o[1]}</button>`).join('')}
+  </div>`;
+}
+
 function zoneTable(hole){
   const rows = ensureZoneShots(hole);
   if(!rows.length){
@@ -1573,23 +1754,11 @@ function zoneTable(hole){
     <div class="shot-row">
       <div class="shot-club">
         <div class="club-lab">${i===0?'TEE':'APP '+i}</div>
-        ${clubSelect('zone',hole.n,i,z.club)}
+        ${isNonShot(z.type) ? '' : clubSelect('zone',hole.n,i,z.club)}
       </div>
       <div class="shot-body">
         <div class="shot-title">${ordinal(i)}</div>
-        ${zTog(hole.n,i,'kind',ZONE_KIND,z.kind||'normal')}
-        ${z.kind==='drop' ? `<div class="shot-sub" style="margin-top:5px">Penalty drop — counts as a stroke, nothing struck.</div>` : `
-          ${i>0 && z.kind!=='air' ? `
-            <div class="shot-sub">LIE</div>
-            ${zTog(hole.n,i,'surface',SURFACES,z.surface)}
-            ${zTog(hole.n,i,'texture',TEXTURES,z.texture)}` : ''}
-          ${z.kind==='air' ? `<div class="shot-sub" style="margin-top:5px">Air shot — counts as a stroke, ball not advanced.</div>` : `
-            <div class="shot-sub">IMPACT</div>
-            ${zTog(hole.n,i,'imp1',IMPACT1,z.imp1)}
-            ${zTog(hole.n,i,'imp2',IMPACT2,z.imp2,'tight-strip')}
-            <div class="shot-sub">OUTCOME</div>
-            ${zTog(hole.n,i,'out',ZONE_OUT,z.out,'out-strip')}`}
-        `}
+        ${shotStrips('zone',hole.n,i,z,{isTee: i===0})}
       </div>
     </div>`).join('')}</div>`;
 }
@@ -1598,44 +1767,35 @@ function ensureShots(hole){
   const n = parseInt(hole.shotsDownIn);
   if(!hole.shots) hole.shots = [];
   if(isNaN(n) || n <= 0) return hole.shots;
-
-  while(hole.shots.length < n) hole.shots.push({type:'',club:'',surface:'',texture:'',conn:'',res:'',out:'',imp:'',out1:'',out2:'',misread:false,misreadSlope:false,slopeDir:'',cat:''});
+  while(hole.shots.length < n) hole.shots.push({type:'',club:'',target:'',surface:'',texture:'',
+    impact:'',shape:'',position:'',outcome:'',greenPos:'',dist:'',shortSide:'',committed:'',imp:'',out1:'',out2:'',
+    misread:false,misreadSlope:false,slopeDir:'',cat:''});
   if(hole.shots.length > n) hole.shots.length = n;
 
   hole.shots.forEach(s => {
-    if(s.conn === undefined) s.conn = '';
-    if(s.club === undefined) s.club = '';
-    if(s.imp  === undefined) s.imp  = '';
-    if(s.out1 === undefined) s.out1 = '';
-    if(s.out2 === undefined) s.out2 = '';
+    ['target','surface','texture','impact','shape','position','outcome','greenPos','dist','shortSide','committed','club','imp','out1','out2','cat']
+      .forEach(k => { if(s[k] === undefined) s[k] = ''; });
     if(s.misread === undefined) s.misread = false;
     if(s.misreadSlope === undefined) s.misreadSlope = false;
     if(s.slopeDir === undefined) s.slopeDir = '';
-    // legacy migrations
-    if((s.out==='thin'||s.out==='fat') && !s.conn){ s.conn = s.out; s.out=''; }
-    if(s.type==='fullwedge') s.type = 'full';
-    if(isPutt(s.type) && s.out && !s.out1){
-      s.out1 = (s.out==='holed') ? 'holed' : (s.out==='long'||s.out==='short') ? s.out : '';
-      if(s.out==='left'||s.out==='right') s.out2 = s.out;
-      if(s.out==='good') s.out1 = 'holed';
-    }
+    // legacy rounds
+    if(s.type==='fullwedge') s.type='full';
+    if(s.type==='sand') s.type='bunker';
+    if(s.type==='tap') s.type='short';
+    if(!s.impact && s.conn) s.impact = s.conn;
+    if(!s.outcome && s.res) s.outcome = (s.res==='on'?'green':s.res);
   });
 
   const putts = parseInt(hole.puttsTotal);
   if(!isNaN(putts)){
     const gsCount = Math.max(0, n - putts);
     hole.shots.forEach((s,i) => {
-      // a row you set yourself is never touched; auto-seeded rows re-seed when the
-      // shot or putt count changes, otherwise a stale guess sticks forever
       if(s.type && !s.autoType) return;
       if(i >= gsCount){
         const puttIdx = i - gsCount, puttsLeft = n - gsCount;
         s.type = (puttsLeft > 1 && puttIdx === 0) ? 'lag' : 'short';
         s.autoType = true;
-      } else if(s.autoType){
-        s.type = '';            // this row is now a greenside shot, let it be chosen
-        s.autoType = false;
-      }
+      } else if(s.autoType){ s.type=''; s.autoType=false; }
     });
   }
   return hole.shots;
@@ -1644,30 +1804,37 @@ function ensureShots(hole){
 function greensideBand(hole){
   const n = parseInt(hole.shotsDownIn), putts = parseInt(hole.puttsTotal);
   if(isNaN(n)) return 99;
-  // before putts are entered, assume a 2-putt green. Treating every row as a
-  // greenside shot made people tag putt rows with a club, and a tagged row never re-seeds.
   const p = isNaN(putts) ? Math.min(2, n) : putts;
   return Math.max(0, n - p);
+}
+
+function shotToggle(holeN, idx, key, opts, val, extraClass){
+  return `<div class="toggle3 shot-toggle ${extraClass||''}" data-hole="${holeN}" data-idx="${idx}" data-key="${key}">
+    ${opts.map(o=>`<button data-val="${o[0]}" class="${val===o[0]?(o[2]||'on-lie'):''}">${o[1]}</button>`).join('')}
+  </div>`;
+}
+
+function autoPuttMark(hole){
+  if(hole.shortPuttManual) return;
+  const p = parseInt(hole.puttsTotal);
+  if(isNaN(p)) return;
+  if(p === 0){ hole.shortPutt = ''; return; }
+  if(p === 1){
+    const longMade = (hole.shots||[]).some(s => s.type==='lag' && s.out1==='holed');
+    hole.shortPutt = longMade ? 'plus' : 'check';
+  }
 }
 
 function syncFromShots(hole){
   const shots = (hole.shots||[]).filter(s => s.type);
   if(!shots.length) return;
-  const taps = shots.filter(s => (s.type === 'short' || s.type === 'tap') && s.out1);
+  const taps = shots.filter(s => s.type === 'short' && s.out1);
   if(taps.length){
-    hole.shortPutt = taps.some(s => s.out1 !== 'holed') ? 'x' : 'check';
+    hole.shortPutt = taps.some(s => s.out1 !== 'holed' && s.out1 !== 'gimme') ? 'x' : 'check';
   } else if(shots.some(s => s.type === 'gimme' || s.out1 === 'gimme')){
     hole.shortPutt = 'check';
   }
   if(shots.some(s => s.type==='lag' && s.out1 === 'holed')) hole.shortPutt = 'plus';
-}
-
-function shotToggle(holeN, idx, key, opts, val, extraClass){
-  return `
-    <div class="toggle3 shot-toggle ${extraClass||''}" data-hole="${holeN}" data-idx="${idx}" data-key="${key}">
-      ${opts.map(o=>`<button data-val="${o[0]}" class="${val===o[0]?(o[2]||'on-lie'):''}">${o[1]}</button>`).join('')}
-    </div>
-  `;
 }
 
 function shotCat(s, i, band){
@@ -1679,40 +1846,24 @@ function shotCat(s, i, band){
 function shotRow(hole, s, i, band){
   const n = hole.n;
   const cat = shotCat(s, i, band);
-  const typeOpts = cat === 'putt' ? PUTT_TYPES : GS_TYPES;
-  const typeRow = shotToggle(n, i, 'type', typeOpts, s.type, 'type-toggle');
   const swap = `<button class="cat-swap" data-hole="${n}" data-idx="${i}">${cat==='putt' ? '⇄ greenside' : '⇄ putt'}</button>`;
 
-  let detail = '';
-  if(isNonShot(s.type)){
-    detail = `<div class="shot-sub" style="margin-top:5px">${s.type==='air'
-      ? 'Air shot — counts as a stroke, ball not advanced.'
-      : 'Penalty drop — counts as a stroke, nothing struck.'}</div>`;
-  } else if(isGreenside(s.type)){
-    detail = `
+  let body;
+  if(cat === 'putt'){
+    body = `
+      ${shotToggle(n,i,'type',PUTT_TYPES, s.type, 'type-toggle')}
+      ${s.type==='gimme' ? `<div class="shot-sub" style="margin-top:5px">Conceded — excluded from make%.</div>` : `
+      <div class="shot-grid">
+        <div class="g-lbl"><span>Impact</span></div>
+        <div class="g-ctl">${togRows('down',n,i,'imp',PUTT_IMP,s.imp,[4,3])}</div>
+        <div class="g-lbl"><span>Outcome</span></div>
+        <div class="g-ctl">${togRows('down',n,i,'out1',puttOutFor(s.type),s.out1,PUTTOUT_ROWS)}
+          ${s.type==='lag' ? `<div class="circle-hint">🎯 ${LAG_CIRCLE.d}y ⭕️ &middot; finish within ${LAG_CIRCLE.r}y</div>` : ''}</div>
+        ${s.type==='lag' ? `<div class="g-lbl"><span>Score</span></div><div class="g-ctl">${circleBox(n,i,s)}</div>` : ''}
+        <div class="g-lbl"><span>Missed</span></div>
+        <div class="g-ctl">${togRows('down',n,i,'out2',PUTT_MISS,s.out2,[4])}</div>
+      </div>
       <div class="shot-detail">
-        <div class="shot-sub">LIE</div>
-        ${shotToggle(n,i,'surface',SURFACES, s.surface)}
-        ${shotToggle(n,i,'texture',TEXTURES, s.texture)}
-        <div class="shot-sub">CONNECTION</div>
-        ${shotToggle(n,i,'conn',CONN_GS, s.conn)}
-        <div class="shot-sub">RESULT${!s.res && s.out ? ' <span class="needs">← set this</span>' : ''}</div>
-        ${shotToggle(n,i,'res',RESULT_SET, s.res)}
-        ${(s.res && s.res!=='holed') || (!s.res && s.out) ? `
-          <div class="shot-sub">POSITION vs HOLE</div>
-          ${shotToggle(n,i,'out',OUT_GS, s.out)}` : ''}
-      </div>`;
-  } else if(s.type === 'gimme'){
-    detail = `<div class="shot-sub" style="margin-top:5px">Conceded — no stroke tested, excluded from make%.</div>`;
-  } else if(isPutt(s.type)){
-    detail = `
-      <div class="shot-detail">
-        <div class="shot-sub">IMPACT</div>
-        ${shotToggle(n,i,'imp',PUTT_IMP, s.imp,'putt-imp')}
-        <div class="shot-sub">OUTCOME</div>
-        ${shotToggle(n,i,'out1',PUTT_OUT1, s.out1,'putt-out')}
-        <div class="shot-sub">MISSED</div>
-        ${shotToggle(n,i,'out2',PUTT_MISS, s.out2,'putt-out')}
         <label class="misread">
           <input type="checkbox" class="misread-box" data-hole="${n}" data-idx="${i}" ${s.misread?'checked':''} />
           Misread the line
@@ -1722,17 +1873,19 @@ function shotRow(hole, s, i, band){
           Misread the slope
         </label>
         ${s.misreadSlope ? shotToggle(n,i,'slopeDir',[['up','Uphill','on-x'],['down','Downhill','on-x']], s.slopeDir) : ''}
-      </div>`;
+      </div>`}`;
+  } else {
+    body = shotStrips('down', n, i, s);
   }
 
-  const showClub = s.type && !isPutt(s.type) && !isNonShot(s.type);
+  const showClub = cat!=='putt' && !isNonShot(s.type);
   return `
     <div class="shot-row">
       <div class="shot-club">
         <div class="club-lab">${i+1}</div>
         ${showClub ? clubSelect('down',n,i,s.club) : ''}
       </div>
-      <div class="shot-body">${typeRow}${detail}<div class="swap-wrap">${swap}</div></div>
+      <div class="shot-body">${body}<div class="swap-wrap">${swap}</div></div>
     </div>
   `;
 }
@@ -1751,7 +1904,7 @@ function holeFlags(h){
   const putts = parseInt(h.puttsTotal)||0;
   const threePutt = putts >= 3;
   const dropped =
-    (h.zoneShots||[]).some(z => (z.kind && z.kind!=='normal') || z.out==='penalty' || z.out==='oob') ||
+    (h.zoneShots||[]).some(z => isNonShot(z.type) || z.outcome==='penalty' || z.outcome==='oob') ||
     (h.shots||[]).some(sh => isNonShot(sh.type)) ||
     h.teeShot==='o' || h.esz==='o' || h.sz==='o';
   return {threePutt, dropped, bad: threePutt || dropped};
@@ -1765,12 +1918,15 @@ function compactHole(h){
   const sc  = h.score || '–';
   const rel = (h.par && h.score) ? (parseInt(h.score)-parseInt(h.par)) : null;
   const relStr = rel===null ? '' : rel===0 ? 'E' : rel>0 ? '+'+rel : String(rel);
-  const relCls = rel===null ? '' : rel<=0 ? 'ok' : rel===1 ? 'warn' : 'bad';
+  const relCls = rel===null ? '' : rel<0 ? 'under' : rel===0 ? 'ok' : rel===1 ? 'warn' : 'bad';
   const fl = holeFlags(h);
-  const tags = [fl.dropped ? '<span class="flag-tag">DROP</span>' : '',
-                fl.threePutt ? '<span class="flag-tag">3-PUTT</span>' : ''].join('');
+  const under = rel !== null && rel < 0;
+  const tags = under
+    ? `<span class="birdie-tag">${rel<=-2?'EAGLE':'BIRDIE'}</span>`
+    : [fl.dropped ? '<span class="flag-tag">DROP</span>' : '',
+       fl.threePutt ? '<span class="flag-tag">3-PUTT</span>' : ''].join('');
   return `
-    <div class="hole-card done ${fl.bad?'flagged':''}" data-hole="${h.n}" data-action="expand">
+    <div class="hole-card done ${under?'under-par':(fl.bad?'flagged':'')}" data-hole="${h.n}" data-action="expand">
       <div class="compact">
         <div class="c-num">${h.n}</div>
         <div class="c-par">par ${par}</div>
@@ -1780,6 +1936,17 @@ function compactHole(h){
         <div class="c-chev">›</div>
       </div>
     </div>`;
+}
+
+// how far to scroll after a hole re-renders.
+// beforeTop/afterTop are the card's viewport offsets; TAB_BAR is the sticky header height.
+const TAB_BAR = 62;
+function anchorDelta(beforeTop, afterTop, tabBar){
+  const bar = tabBar === undefined ? TAB_BAR : tabBar;
+  // card top was visible: keep it exactly where it was
+  if(beforeTop >= bar) return afterTop - beforeTop;
+  // card top was above the fold: park the collapsed card just under the tab bar
+  return afterTop - bar;
 }
 
 function renderHoles(){
@@ -1793,7 +1960,7 @@ function renderHoles(){
       <button id="toggleAllBtn" data-open="${anyOpen?1:0}">${anyOpen ? 'Collapse all' : 'Expand all'}</button>
     </div>
   ` + state.holes.map(h => h.done ? compactHole(h) : `
-    <div class="hole-card" data-hole="${h.n}">
+    <div class="hole-card ${(h.par && h.score && (+h.score - +h.par) < 0) ? 'under-par-open' : ''}" data-hole="${h.n}">
       <div class="hole-top">
         <div class="hole-id">
           <span class="n">Hole ${h.n}</span>
@@ -1871,6 +2038,10 @@ function renderHoles(){
         const z = hole.zoneShots[+t.dataset.idx];
         if(z){
           if(t.dataset.key === 'surface'){ z.lieManual = true; z.lieAuto = false; }
+          if(t.dataset.key === 'outcome'){
+            if(b.dataset.val !== 'green') z.greenPos='';
+            if(!['fringe','rough','bunker','trees'].includes(b.dataset.val)) z.shortSide='';
+          }
           z[t.dataset.key] = z[t.dataset.key] === b.dataset.val ? '' : b.dataset.val;
         }
         syncTeeFromZone(hole);
@@ -1887,6 +2058,16 @@ function renderHoles(){
       if(sel.dataset.scope === 'zone'){ ensureZoneShots(hole); if(hole.zoneShots[idx]) hole.zoneShots[idx].club = sel.value; }
       else { ensureShots(hole); if(hole.shots[idx]) hole.shots[idx].club = sel.value; }
       persist();
+    });
+  });
+
+  holesEl.querySelectorAll('.circle-box').forEach(cb=>{
+    cb.addEventListener('change', ()=>{
+      const hole = state.holes.find(x=>x.n === +cb.dataset.hole);
+      ensureShots(hole);
+      const sh = hole.shots[+cb.dataset.idx];
+      if(sh){ sh.inCircle = cb.checked; sh.inCircleManual = true; }
+      rerender();
     });
   });
 
@@ -1926,20 +2107,6 @@ function renderHoles(){
     });
   });
 
-  holesEl.querySelectorAll('.appr-toggle').forEach(t=>{
-    t.querySelectorAll('button').forEach(b=>{
-      b.addEventListener('click', ()=>{
-        const hole = state.holes.find(x=>x.n === +t.dataset.hole);
-        ensureApproaches(hole);
-        const a = hole.approaches[+t.dataset.idx];
-        if(a){
-          a[t.dataset.key] = a[t.dataset.key] === b.dataset.val ? '' : b.dataset.val;
-          if(t.dataset.key==='res' && a.res==='holed') a.out='';
-        }
-        rerender();
-      });
-    });
-  });
 
   holesEl.querySelectorAll('.par-pick').forEach(pp=>{
     pp.querySelectorAll('button').forEach(b=>{
@@ -1953,7 +2120,10 @@ function renderHoles(){
     });
   });
 
-  // collapsing a hole shrinks the list, so pin the tapped hole in place
+  // collapsing a hole shrinks the list, so pin the tapped hole in place.
+  // If its top was already scrolled off above the viewport (which is where you
+  // are when you tap the Done button at the BOTTOM of a long card), holding that
+  // offset would throw you several holes forward, so bring the card back into view.
   const keepAnchored = (holeN, fn) => {
     const before = holesEl.querySelector(`[data-hole="${holeN}"]`);
     const top = before ? before.getBoundingClientRect().top : null;
@@ -1961,7 +2131,7 @@ function renderHoles(){
     if(top === null) return;
     const after = holesEl.querySelector(`[data-hole="${holeN}"]`);
     if(!after) return;
-    const delta = after.getBoundingClientRect().top - top;
+    const delta = anchorDelta(top, after.getBoundingClientRect().top);
     if(delta) window.scrollBy(0, delta);
   };
 
@@ -1995,17 +2165,23 @@ function renderHoles(){
           const shot = hole.shots[idx];
           if(shot){
             if(key === 'surface'){ shot.lieManual = true; shot.lieAuto = false; }
+            if(key === 'outcome'){
+              if(b.dataset.val !== 'green') shot.greenPos='';
+              if(!['fringe','rough','bunker','trees'].includes(b.dataset.val)) shot.shortSide='';
+            }
             const newVal = shot[key] === b.dataset.val ? '' : b.dataset.val;
             shot[key] = newVal;
-            if(key === 'type'){ shot.autoType = false; shot.surface=''; shot.texture=''; shot.res=''; shot.out=''; }
+            if(key === 'type'){ shot.autoType = false; }
             if(key === 'res' && shot.res==='holed') shot.out='';
           }
           syncFromShots(hole);
+          autoPuttMark(hole);
           autoFillLies(hole);
           chainGimmes(hole);
         } else {
           const field = t.dataset.field;
           hole[field] = hole[field] === b.dataset.val ? '' : b.dataset.val;
+          if(field === 'shortPutt') hole.shortPuttManual = true;
         }
 
         renderHoles();
@@ -2040,6 +2216,7 @@ function renderHoles(){
       }
       if(field === 'shotsDownIn' || field === 'puttsTotal'){
         ensureShots(hole);
+        autoPuttMark(hole);
       }
       if(field === 'shotsEnter'){
         ensureZoneShots(hole);
@@ -2142,7 +2319,10 @@ function diagnose(holes, gearDownIn){
   const num = v => { const n = parseInt(v); return isNaN(n) ? null : n; };
   const greenside = h => {
     const sd = num(h.shotsDownIn), p = num(h.puttsTotal);
-    return (sd!==null && p!==null) ? Math.max(0, sd - p) : null;
+    if(sd===null || p===null) return null;
+    // non-shots in the down-in band are charged as avoidable strokes, not short game
+    const nonStrokes = (h.shots||[]).filter(x => isNonShot(x.type)).length;
+    return Math.max(0, sd - p - nonStrokes);
   };
 
   // ---------- PUTTING ----------
@@ -2189,7 +2369,7 @@ function diagnose(holes, gearDownIn){
   const sgHoles = H.filter(h => greenside(h) !== null);
   // a hole where a greenside shot was HOLED is a success, not a failure, however many shots it took
   const sgFails = sgHoles.filter(h => greenside(h) >= 2 &&
-    !(h.shots||[]).some(sh => isGreenside(sh.type) && sh.res === 'holed'));
+    !(h.shots||[]).some(sh => isGreenside(sh.type) && (sh.outcome==='green' && sh.greenPos==='holed')));
   sgFails.forEach(h => { lost.shortGame += greenside(h) - 1; });
 
   if(sgFails.length){
@@ -2236,7 +2416,7 @@ function diagnose(holes, gearDownIn){
   if(lagGraded.length){
     const holed = lagGraded.filter(s=>s.out1==='holed');
     const closeOk = lagGraded.filter(s=>s.out1==='gimme');
-    const miss  = lagGraded.filter(s=>s.out1!=='gimme' && s.out1!=='holed');
+    const miss  = lagGraded.filter(s=>s.out1!=='gimme' && s.out1!=='holed' && s.out1!=='pinhigh');
     const dir = tally(miss, s=>s.out1);
     const dir2 = tally(miss, s=>s.out2);
     const sh=dir.short||0, lo=dir.long||0;
@@ -2279,7 +2459,7 @@ function diagnose(holes, gearDownIn){
   const tapGraded = tapShots.filter(s=>s.out1);
   if(tapGraded.length){
     const made = tapGraded.filter(s=>s.out1==='holed');
-    const missed = tapGraded.filter(s=>s.out1!=='holed');
+    const missed = tapGraded.filter(s=>s.out1!=='holed' && s.out1!=='gimme');
     if(missed.length){
       const dir = tally(missed, s=>s.out1);
       const dirL = tally(missed, s=>s.out2);
@@ -2474,258 +2654,330 @@ function diagnose(holes, gearDownIn){
     });
   }
 
-  // ---------- ZONE SHOTS: tee + approaches, with clubs ----------
-  const zoneAll = [];
-  const nonShots = [];
-  H.forEach(h => (h.zoneShots||[]).forEach((z,i) => {
-    if(z.kind && z.kind!=='normal'){ nonShots.push({...z, hole:h.n, where:'zone'}); return; }
-    if(z.club||z.imp1||z.imp2||z.out) zoneAll.push({...z, hole:h.n, idx:i, isTee:i===0, par:h.par});
-  }));
-  H.forEach(h => (h.shots||[]).forEach(sh => {
-    if(isNonShot(sh.type)) nonShots.push({...sh, hole:h.n, where:'down-in', kind:sh.type});
-  }));
-  // penalty / OOB outcomes belong in the same avoidable bucket
-  const penShots = [];
-  H.forEach(h => (h.zoneShots||[]).forEach(z => {
-    if(z.out==='penalty' || z.out==='oob') penShots.push({...z, hole:h.n});
-  }));
-  if(nonShots.length || penShots.length){
-    const air = nonShots.filter(x=>x.kind==='air').length;
-    const drop = nonShots.filter(x=>x.kind==='drop').length;
-    const pen = penShots.length;
-    const total = nonShots.length + pen;
-    const partsList = [air?`${air} air`:null, drop?`${drop} penalty drop${drop>1?'s':''}`:null,
-                       pen?`${pen} into penalty/OOB`:null].filter(Boolean).join(', ');
-    const allHoles = [...new Set([...nonShots.map(x=>x.hole), ...penShots.map(x=>x.hole)])].sort((a,b)=>a-b);
-    lost.penalty += drop + pen;
-    lost.shortGame += air;
+  // ---------- EVERY FULL SHOT, STRATEGY vs EXECUTION ----------
+  const allFull = [];
+  H.forEach(h => {
+    // a non-shot (air / drop / penalty) needs nothing but its type to count
+    (h.zoneShots||[]).forEach((z,i)=>{ if(isNonShot(z.type) || z.target||z.outcome||z.impact)
+      allFull.push({...z, hole:h.n, isTee:i===0, phase: i===0?'tee':'approach'}); });
+    (h.shots||[]).forEach(sh=>{ if(!isPutt(sh.type) && (isNonShot(sh.type) || sh.target||sh.outcome||sh.impact))
+      allFull.push({...sh, hole:h.n, isTee:false, phase:'greenside'}); });
+  });
+
+  const nonShots2 = allFull.filter(x=>isNonShot(x.type));
+  const struck = allFull.filter(x=>!isNonShot(x.type));
+
+  // ---------- AVOIDABLE STROKES: loudest finding, always first ----------
+  // an OOB / penalty outcome and the Penalty or Drop row logged right after it are the SAME
+  // penalty stroke - count the row, not both
+  const followedByPenaltyRow = x => {
+    const h = H.find(hh => hh.n === x.hole);
+    if(!h) return false;
+    const seq = [...(h.zoneShots||[]), ...(h.shots||[])];
+    const at = seq.findIndex(s => s === x || (s.outcome===x.outcome && s.club===x.club && s.type===x.type && s.impact===x.impact));
+    const next = at >= 0 ? seq[at+1] : null;
+    return !!(next && (next.type==='penalty' || next.type==='drop'));
+  };
+  const penShots = struck.filter(x => (x.outcome==='penalty' || x.outcome==='oob') && !followedByPenaltyRow(x));
+  if(nonShots2.length || penShots.length){
+    const air  = nonShots2.filter(x=>x.type==='air').length;
+    const drop = nonShots2.filter(x=>x.type==='drop').length;
+    const pen  = nonShots2.filter(x=>x.type==='penalty').length + penShots.length;
+    const total = nonShots2.length + penShots.length;
+    const parts = [air?`${air} air`:null, drop?`${drop} drop${drop>1?'s':''}`:null,
+                   pen?`${pen} into penalty/OOB`:null].filter(Boolean).join(', ');
+    const holes = [...new Set([...nonShots2.map(x=>x.hole), ...penShots.map(x=>x.hole)])].sort((a,b)=>a-b);
+    lost.penalty += drop + pen + air;   // every stroke that advanced the ball nowhere
     f.push({
       sev: total >= 3 ? 'crit' : 'warn',
       pri: 'wasted',
-      title: `AVOIDABLE — ${total} wasted stroke${total>1?'s':''} (${partsList})`,
-      body: `Hole${allHoles.length>1?'s':''} ${allHoles.join(', ')}. These are the purest wasted strokes on the card — no shot was tested and nothing was gained, yet each costs exactly the same as a missed putt. Cut these before touching anything technical: it is the fastest ${total} shot${total>1?'s':''} you will ever save.`,
-      fix: drop >= air
-        ? `Key 2 and 3: take the drop that leaves the simplest next shot, and play back to safety rather than attempting the recovery that got you there.`
-        : `Air shots almost always come from tension or an awkward lie. Rehearse the actual strike twice before stepping in, and take the lower-risk club.`
+      title: `AVOIDABLE — ${total} wasted stroke${total>1?'s':''} (${parts})`,
+      body: `Hole${holes.length>1?'s':''} ${holes.join(', ')}. These are the purest wasted strokes on the card \u2014 no shot was tested and nothing was gained, yet each costs exactly the same as a missed putt. Cut these before touching anything technical: it is the fastest ${total} shot${total>1?'s':''} you will ever save.`,
+      fix: (drop + pen) >= air
+        ? `Keys 2 and 3: play away from trouble first, and when you are in it, get back in play rather than attempting the recovery that put you there.`
+        : `Air shots come from tension or an awkward lie. Rehearse the strike twice before stepping in, and take the club that can actually escape.`
     });
   }
-  const teeShots = zoneAll.filter(z=>z.isTee);
-  const apprShots = zoneAll.filter(z=>!z.isTee);
 
-  const GOODOUT = o => o==='green' || o==='target';
-
-  // --- club-by-club, weighted: success 100%, safe 60%, mishit 30%, wasted 0% ---
-  const clubStats = {};
-  const bump = (club, weight, label) => {
-    if(!club) return;
-    clubStats[club] = clubStats[club] || {n:0, pts:0, club, tags:[]};
-    clubStats[club].n++;
-    clubStats[club].pts += weight;
-    if(label) clubStats[club].tags.push(label);
-  };
-
-  H.forEach(h => {
-    const zoneTarget = Math.max(1, (parseInt(h.par)||4) - 2);   // shots allowed to reach the zone
-    const usedToZone = parseInt(h.shotsEnter);
-    (h.zoneShots||[]).forEach((z,i) => {
-      if(z.kind && z.kind!=='normal'){ bump(z.club, 0, 'wasted'); return; }
-      if(z.out==='penalty' || z.out==='oob'){ bump(z.club, 0, 'penalty'); return; }
-      if(!z.club && !z.out) return;
-      const cleanStrike = !z.imp1 || z.imp1==='good';
-      const goodOut = z.out==='green' || z.out==='target';
-      if(goodOut && cleanStrike)      bump(z.club, 1.0, 'success');
-      else if(!isNaN(usedToZone) && usedToZone <= zoneTarget) bump(z.club, 0.6, 'safe');
-      else                            bump(z.club, 0.3, 'mishit');
+  // the core split: aimed well but missed = strategy/club; struck badly = execution
+  const judged = struck.filter(x=>x.target && x.outcome);
+  if(judged.length >= 4){
+    const clean = judged.filter(x=>goodImpact(x.impact));
+    const hitTarget = judged.filter(x=>targetHit(x.target,x.outcome));
+    const strategyErr = judged.filter(x=>goodImpact(x.impact) && targetHit(x.target,x.outcome)===false);
+    const executionErr = judged.filter(x=>!goodImpact(x.impact) && targetHit(x.target,x.outcome)===false);
+    const gotAway = judged.filter(x=>!goodImpact(x.impact) && targetHit(x.target,x.outcome)===true);
+    const pct = Math.round(100*hitTarget.length/judged.length);
+    const dominant = strategyErr.length > executionErr.length ? 'strategy' :
+                     executionErr.length > strategyErr.length ? 'execution' : 'even';
+    f.push({
+      sev: pct < 50 ? 'crit' : 'warn',
+      title: `Target hit ${hitTarget.length}/${judged.length} (${pct}%) — ${strategyErr.length} strategy, ${executionErr.length} execution`,
+      body: dominant==='strategy'
+        ? `<b>${strategyErr.length} shots you struck cleanly still missed the target.</b> That is not your swing \u2014 it is club selection, aim, or picking a target you cannot reliably hit. The cheapest fix in golf: same swing, better decision. ${gotAway.length?`(${gotAway.length} bad strikes got away with it, which flatters the raw numbers.)`:''}`
+        : dominant==='execution'
+        ? `<b>${executionErr.length} misses came from poor contact</b>, versus only ${strategyErr.length} where a clean strike still missed. Your decisions are broadly sound \u2014 the strike is what is costing you, so range work will pay here in a way that course management will not.`
+        : `Strategy and execution errors are running level (${strategyErr.length} vs ${executionErr.length}) \u2014 no single lever dominates yet.`,
+      fix: dominant==='strategy'
+        ? `Before every shot name the target out loud and ask "can I hit this 7 times out of 10?" If not, pick a bigger target. Aim at green centre, never a flag.`
+        : dominant==='execution'
+        ? `Strike first: low-point control drill, divot starts on the line, 20 reps before any full-swing work.`
+        : null
     });
+  }
 
-    const downTarget = parseInt((state.gearSettings[state.currentGear]||{}).downIn) || 3;
-    const usedDown = parseInt(h.shotsDownIn);
-    (h.shots||[]).forEach(sh => {
-      if(isNonShot(sh.type)){ bump(sh.club, 0, 'wasted'); return; }
-      if(!sh.club) return;
-      const cleanStrike = !sh.conn || sh.conn==='good';
-      const goodOut = sh.res==='holed' || (onGreen(sh.res) && (!sh.out || sh.out==='good'));
-      if(goodOut && cleanStrike)     bump(sh.club, 1.0, 'success');
-      else if(!isNaN(usedDown) && usedDown <= downTarget) bump(sh.club, 0.6, 'safe');
-      else                           bump(sh.club, 0.3, 'mishit');
-    });
+  // --- impact pattern across the bag ---
+  const impactMiss = tally(struck.filter(x=>x.impact && x.impact!=='good'), x=>x.impact);
+  if(Object.values(impactMiss).reduce((a,b)=>a+b,0) >= 3){
+    const top = topKey(impactMiss);
+    const thinFamily = (impactMiss.thin||0)+(impactMiss.skull||0);
+    const fatFamily  = (impactMiss.fat||0)+(impactMiss.duff||0);
+    let read, drill;
+    if(thinFamily > fatFamily){
+      read = `Low point is drifting BACK \u2014 ${thinFamily} thin/skulled against ${fatFamily} heavy. You are hanging back or trying to lift the ball.`;
+      drill = `Towel drill: towel 6in behind the ball, brush turf in FRONT of it. 20 balls, pressure into the lead side.`;
+    } else if(fatFamily > thinFamily){
+      read = `Low point is BEHIND the ball \u2014 ${fatFamily} heavy against ${thinFamily} thin. Weight stuck back or over-steepening.`;
+      drill = `Line drill: divot must START on the line, never behind. 20 reps before hitting balls.`;
+    } else {
+      read = `Strike is wandering rather than repeating one fault (${tstr(impactMiss)}) \u2014 a contact-consistency problem.`;
+      drill = `Feet-together drill, 20 balls, centre contact only. Rebuild from a stable base.`;
+    }
+    f.push({ sev: Object.values(impactMiss).reduce((a,b)=>a+b,0)>=6?'crit':'warn',
+      title:`Strike pattern: ${tstr(impactMiss)}`, body:read, fix:drill });
+  }
+
+  // --- shape pattern: is there a two-way miss? ---
+  const shapes = tally(struck.filter(x=>x.shape && x.shape!=='straight'), x=>x.shape);
+  const L2=(shapes.hook||0)+(shapes.pull||0), R2=(shapes.slice||0)+(shapes.push||0);
+  if(L2>=2 && R2>=2 && Math.abs(L2-R2)<=1){
+    f.push({ sev:'crit', title:`Two-way miss (${R2} right, ${L2} left)`,
+      body:`Neither side is safe, so you cannot aim away from trouble and course management cannot protect you. This matters more than either fault alone.`,
+      fix:`Take the club whose miss you can predict, even at 30 yards cost. In practice: 20 balls feet-together for centre strike, then rebuild.` });
+  } else if(L2+R2 >= 3){
+    const side = L2>R2 ? 'LEFT' : 'RIGHT';
+    f.push({ sev:'warn', title:`One-way miss: ${side} (${tstr(shapes)})`,
+      body:`A predictable curve is an asset \u2014 aim to the opposite edge and let the ball work back. The error is only costing you when you aim down the middle.`,
+      fix:`Aim deliberately at the ${side==='LEFT'?'right':'left'} edge on tight holes and let your natural shape bring it in.` });
+  }
+  if((shapes.skidder||0)+(shapes.skyer||0) >= 3){
+    f.push({ sev:'warn', title:`${(shapes.skidder||0)+(shapes.skyer||0)} trajectory misses (${shapes.skidder||0} skidder, ${shapes.skyer||0} skyer)`,
+      body:`Flight height is inconsistent, which makes distance unpredictable even when direction is fine \u2014 a skidder and a skyer from the same club can finish 40 yards apart.`,
+      fix:`Ball-position ladder: same club, 10 balls each with ball forward / centre / back, note the flight. Learn which position gives your stock height.` });
+  }
+
+  // --- position vs target: distance control ---
+  const pos = tally(struck.filter(x=>x.position && !['good','high','straight'].includes(x.position)), x=>x.position);
+  const pShort=pos.short||0, pLong=pos.long||0, pFlub=pos.flub||0;
+  if(pShort+pLong >= 3){
+    if(pShort >= 1 && pLong >= 1 && Math.abs(pShort-pLong)<=1){
+      f.push({ sev:'warn', title:`Distance scatter (${pShort} short, ${pLong} long)`,
+        body:`Missing both short and long means the yardage itself is unreliable rather than your aim. A bias you can club around; scatter you cannot.`,
+        fix:`Carry ladder: 10 balls each with three clubs, record AVERAGE carry, discard your two best. Club off that number.` });
+    } else if(pShort > pLong){
+      f.push({ sev:'warn', title:`${pShort} shots finished SHORT of target`,
+        body:`Systematic under-clubbing \u2014 Key 5. Short is also the worst miss: front bunkers, false fronts and uphill chips all live there.`,
+        fix:`Take one more club than feels right for 15 approach shots and note where they finish.` });
+    } else {
+      f.push({ sev:'warn', title:`${pLong} shots finished LONG of target`,
+        body:`Over-clubbing or adrenaline. Long-side misses often leave the hardest short-game shot coming back down the slope.`,
+        fix:`Three-quarter drill: same club, 10 balls at 75% effort, log the carry. Build a reliable knock-down number.` });
+    }
+  }
+  if(pFlub >= 2){
+    f.push({ sev:'crit', title:`${pFlub} shots that went essentially nowhere (Flub)`,
+      body:`These cost the same as a penalty and usually come from an awkward lie or a tentative swing. Holes ${[...new Set(struck.filter(x=>x.position==='flub').map(x=>x.hole))].join(', ')}.`,
+      fix:`Commit to the club that can actually escape the lie, and rehearse the strike twice before stepping in.` });
+  }
+
+  // --- proximity once on the green ---
+  const onG = struck.filter(x=>x.outcome==='green' && x.greenPos);
+  if(onG.length >= 3){
+    const close = onG.filter(x=>x.greenPos==='holed' || x.greenPos==='close').length;
+    const far = tally(onG.filter(x=>x.greenPos!=='holed' && x.greenPos!=='close' && x.greenPos!=='high'), x=>x.greenPos);
+    const pinHigh = onG.filter(x=>x.greenPos==='high').length;
+    if(close + pinHigh < onG.length/2){
+      f.push({ sev:'warn', title:`Greens hit but only ${close} inside 3y (${onG.length} tracked)`,
+        body:`Proximity: ${tstr(far)}${pinHigh?`, ${pinHigh} pin high`:''}. You are finding the surface but not the right part of it, which is exactly why the lag-putting load is so heavy. This is a target-selection and distance problem, not ball-striking.`,
+        fix:`Aim at the quadrant level with or below the hole. 20 approaches naming the quadrant out loud before each ball.` });
+    } else {
+      f.push({ sev:'good', title:`Good proximity: ${close} of ${onG.length} inside 3y${pinHigh?`, ${pinHigh} pin high`:''}`,
+        body:`When you hit the green you are leaving makeable putts \u2014 protect this.`, fix:null });
+    }
+  }
+
+  // --- lie difficulty: how much is the rough actually costing? ---
+  const fromGoodLie = struck.filter(x=>x.surface==='fairway' && x.outcome);
+  const fromBadLie  = struck.filter(x=>(x.surface==='rough'||x.surface==='sand') && x.outcome);
+  if(fromGoodLie.length>=3 && fromBadLie.length>=3){
+    const gOK = fromGoodLie.filter(x=>targetHit(x.target,x.outcome)).length/fromGoodLie.length;
+    const bOK = fromBadLie.filter(x=>targetHit(x.target,x.outcome)).length/fromBadLie.length;
+    if(gOK - bOK >= 0.25){
+      f.push({ sev:'warn', title:`Bad lies cost you: ${Math.round(bOK*100)}% vs ${Math.round(gOK*100)}% from the fairway`,
+        body:`This is the true price of missed tee shots \u2014 not the drive itself, but what the lie then does to the next shot. It also strengthens the case for a more reliable club off the tee.`,
+        fix:`Practise from bad lies deliberately: 15 shots from rough, one club more, ball slightly back, accept a lower flight.` });
+    }
+  }
+  const deep = struck.filter(x=>x.texture==='deep');
+  if(deep.length >= 2){
+    f.push({ sev:'warn', title:`${deep.length} shots from a deep lie`,
+      body:`Deep lies rarely allow the shot you want. The error is usually attempting a normal shot rather than the escape.`,
+      fix:`From deep: most-lofted club, ball back, steep and committed. Get it in play, do not chase distance.` });
+  }
+
+  // --- performance by distance: the context every other stat was missing ---
+  const byDist = {};
+  struck.filter(x=>x.dist && x.outcome && x.target==='green').forEach(x=>{
+    byDist[x.dist] = byDist[x.dist] || {n:0, hit:0};
+    byDist[x.dist].n++;
+    if(x.outcome==='green') byDist[x.dist].hit++;
   });
+  const distRows = DIST_BANDS.map(b=>({key:b[0], label:DIST_LABEL[b[0]], ...(byDist[b[0]]||{n:0,hit:0})}))
+                             .filter(r=>r.n>=2);
+  if(distRows.length >= 2){
+    const withPct = distRows.map(r=>({...r, pct: Math.round(100*r.hit/r.n)}));
+    const bar = r => `<div class="club-row"><div class="club-name">${r.label}</div>`+
+      `<div class="club-bar"><div class="club-fill ${r.pct>=50?'good':r.pct>=25?'ok':'bad'}" style="width:${r.pct}%"></div></div>`+
+      `<div class="club-score">${r.pct}%</div></div>`;
+    // a wedge miss costs far more than a long-iron miss, because it should be a green
+    const shortRange = withPct.filter(r=>r.key==='d0'||r.key==='d50');
+    const weakShort = shortRange.filter(r=>r.pct < 50);
+    f.push({
+      sev: weakShort.length ? 'crit' : 'warn',
+      title: `Greens hit by distance`,
+      body: `<div class="club-table">${withPct.map(bar).join('')}</div>` +
+        (weakShort.length
+          ? `<b>Inside 100 yards you are hitting only ${weakShort.map(r=>`${r.pct}% from ${r.label}`).join(' and ')}.</b> That is the number that matters most \u2014 from wedge range the green is the minimum expectation, and every miss there is a stroke you had in hand. Missing from 200y is normal golf; missing from 60y is not.`
+          : `Expect roughly 20-30% from 200y+, 40-55% from 100-150y and 70%+ inside 100y. Judge each band against its own bar, not against the others.`),
+      fix: weakShort.length ? `Wedge ladder: 10 balls each at 40/60/80y to a towel target. Score only on landing spot. This is the highest-value hour in your practice week.` : null
+    });
+  }
 
-  const clubRows = Object.values(clubStats).filter(c => c.n >= 3)
-    .map(c => ({...c, score: Math.round(100*c.pts/c.n)}))
-    .sort((a,b) => b.score - a.score);
+  // --- short-siding: Key 7, previously invisible ---
+  const greenMisses = struck.filter(x=>['fringe','rough','bunker','trees'].includes(x.outcome) && x.shortSide);
+  if(greenMisses.length >= 3){
+    const shortSided = greenMisses.filter(x=>x.shortSide==='yes');
+    const pct = Math.round(100*shortSided.length/greenMisses.length);
+    // did short-siding actually cost strokes on those holes?
+    const ssHoles = [...new Set(shortSided.map(x=>x.hole))];
+    const ssDamage = H.filter(h=>ssHoles.includes(h.n) && h.par && h.score && (+h.score - +h.par) >= 2).length;
+    f.push({
+      sev: pct >= 40 ? 'crit' : 'warn',
+      title: `Short-sided on ${shortSided.length} of ${greenMisses.length} green misses (${pct}%)`,
+      body: pct >= 40
+        ? `<b>Key 7 is costing you.</b> Missing the green is survivable; missing it on the wrong side is what turns a bogey into a double \u2014 you are left with no green to work with and a shot you cannot control.${ssDamage?` ${ssDamage} of those holes ended in double bogey or worse.`:''} Short-siding is almost always a target-choice error, not a swing error.`
+        : `Most of your green misses left you the fat side, which is exactly right \u2014 that is Key 7 working.`,
+      fix: pct >= 40 ? `Aim away from the flag whenever it is tucked. Pick the side of the green with the most room and accept a 30ft putt: two putts from there beats a short-sided chip almost every time.` : null
+    });
+  }
 
+  // --- commitment: the mental cost, made measurable ---
+  const judgedCommit = struck.filter(x=>x.committed && x.outcome && x.target);
+  if(judgedCommit.length >= 5){
+    const yes = judgedCommit.filter(x=>x.committed==='yes');
+    const no  = judgedCommit.filter(x=>x.committed==='no');
+    if(no.length >= 2 && yes.length >= 2){
+      const yOK = yes.filter(x=>targetHit(x.target,x.outcome)).length/yes.length;
+      const nOK = no.filter(x=>targetHit(x.target,x.outcome)).length/no.length;
+      const yBad = yes.filter(x=>!goodImpact(x.impact)).length/yes.length;
+      const nBad = no.filter(x=>!goodImpact(x.impact)).length/no.length;
+      const gap = Math.round(100*(yOK-nOK));
+      f.push({
+        sev: gap >= 25 ? 'crit' : no.length >= 5 ? 'warn' : 'good',
+        title: `Committed ${Math.round(100*yOK)}% vs uncommitted ${Math.round(100*nOK)}% (${no.length} uncertain shots)`,
+        body: gap >= 25
+          ? `<b>Indecision is costing you ${gap} percentage points.</b> Poor contact on uncommitted shots ran at ${Math.round(100*nBad)}% against ${Math.round(100*yBad)}% when you were sure. This is Keys 6 and 8 \u2014 and it is a decision problem, not a swing problem. The swing you commit to is better than the better swing you doubt.`
+          : `Little difference between committed and uncertain shots here (${gap>0?'+':''}${gap} points), so indecision is not currently a major leak.`,
+        fix: gap >= 25 ? `Rule for the next round: if you are not sure, step away and re-choose. Never start the backswing on a shot you are still debating \u2014 take the duller option and commit to it fully.` : null
+      });
+    }
+  }
+
+  // --- scoring-zone circles: did the shot finish where it needed to? ---
+  const zoneShots2 = [];
+  H.forEach(h => (h.shots||[]).forEach(sh => {
+    if(isGreenside(sh.type) && ZONE_CIRCLE[sh.dist] && (sh.outcome || sh.inCircleManual)) zoneShots2.push({...sh, hole:h.n});
+  }));
+  if(zoneShots2.length >= 3){
+    const rows2 = Object.keys(ZONE_CIRCLE).map(k => {
+      const g = zoneShots2.filter(x=>x.dist===k);
+      return {k, label:ZONE_CIRCLE[k].label, r:ZONE_CIRCLE[k].r, n:g.length, hit:g.filter(x=>inCircle(x)).length,
+              offGreen:g.filter(x=>x.outcome!=='green').length};
+    }).filter(r=>r.n>0);
+    const bar = r => { const pct=Math.round(100*r.hit/r.n);
+      return `<div class="club-row"><div class="club-name" style="width:62px">${r.label}</div>`+
+        `<div class="club-bar"><div class="club-fill ${pct>=50?'good':pct>=25?'ok':'bad'}" style="width:${pct}%"></div></div>`+
+        `<div class="club-score" style="width:52px">${r.hit}/${r.n}</div></div>`; };
+    const total = zoneShots2.length, hits = zoneShots2.filter(x=>inCircle(x)).length;
+    const pct = Math.round(100*hits/total);
+    const worst = rows2.filter(r=>r.n>=2).sort((a,b)=>(a.hit/a.n)-(b.hit/b.n))[0];
+    const missedGreen = rows2.reduce((a,r)=>a+r.offGreen,0);
+    f.push({
+      sev: pct < 30 ? 'crit' : pct < 50 ? 'warn' : 'good',
+      title: `Inside the scoring circle ${hits}/${total} (${pct}%)`,
+      body: `Target circles: 10y from 100–50y, 6y from 50–25y, 4y inside 25y.`+
+        `<div class="club-table">${rows2.map(bar).join('')}</div>`+
+        (missedGreen ? `${missedGreen} of these did not even find the green, which is the first leak to plug. ` : '')+
+        (worst && worst.hit/worst.n < 0.5
+          ? `<b>Weakest band: ${worst.label}</b> \u2014 ${worst.hit} of ${worst.n} inside ${worst.r}y. Every shot outside the circle hands your putter a harder job, and from there a two-putt is the good outcome, not the expected one.`
+          : `Short-game proximity is holding up \u2014 you are giving yourself makeable putts.`),
+      fix: worst && worst.hit/worst.n < 0.5
+        ? (worst.k==='z100'
+            ? `Wedge ladder at 50/75/100y into a 10y circle marked with towels. 10 balls per distance, count circle hits only.`
+            : worst.k==='z50'
+            ? `Pitching to a 6y circle from 30/40/50y. One club, vary only the backswing length. 10 balls each.`
+            : `Chipping to a 4y circle from 10/15/20y. Pick the landing spot first, then the club that runs out to the hole.`)
+        : null
+    });
+  }
+
+  // --- lag putts against the 2y circle ---
+  const lags2 = [];
+  H.forEach(h => (h.shots||[]).forEach(sh => { if(sh.type==='lag' && (sh.out1 || sh.inCircleManual)) lags2.push(sh); }));
+  if(lags2.length >= 3){
+    const inside = lags2.filter(x=>inCircle(x)).length;
+    const pctL = Math.round(100*inside/lags2.length);
+    f.push({
+      sev: pctL < 50 ? 'crit' : pctL < 70 ? 'warn' : 'good',
+      title: `Lag putts inside 2y: ${inside}/${lags2.length} (${pctL}%)`,
+      body: pctL < 70
+        ? `A lag that finishes outside 2 yards leaves a putt you will miss often enough to produce three-putts. Every lag outside the circle is where your three-putts are being born.`
+        : `Your lag putting is leaving tap-ins \u2014 the three-putt risk is low.`,
+      fix: pctL < 70 ? `Circle drill: mark a 4y circle round the hole with tees. 20 putts from 30-40ft, score only balls that stop inside.` : null
+    });
+  }
+
+  // --- club effectiveness, weighted ---
+  const clubStats = {};
+  allFull.forEach(x => {
+    if(!x.club) return;
+    clubStats[x.club] = clubStats[x.club] || {n:0,pts:0,club:x.club,bad:[]};
+    const c = clubStats[x.club];
+    c.n++;
+    if(isNonShot(x.type)){ c.bad.push(x.type); return; }
+    const hit = targetHit(x.target,x.outcome);
+    const cleanHit = goodImpact(x.impact);
+    if(hit && cleanHit) c.pts += 1;
+    else if(hit) c.pts += 0.6;
+    else if(cleanHit) c.pts += 0.6;
+    else { c.pts += 0.3; c.bad.push(x.outcome||'miss'); }
+  });
+  const clubRows = Object.values(clubStats).filter(c=>c.n>=3)
+    .map(c=>({...c, score: Math.round(100*c.pts/c.n)})).sort((a,b)=>b.score-a.score);
   if(clubRows.length >= 2){
-    const best = clubRows[0], worst = clubRows[clubRows.length-1];
-    const bar = c => {
-      const cls = c.score >= 70 ? 'good' : c.score >= 45 ? 'ok' : 'bad';
-      return `<div class="club-row"><div class="club-name">${c.club}</div>` +
-        `<div class="club-bar"><div class="club-fill ${cls}" style="width:${c.score}%"></div></div>` +
-        `<div class="club-score">${c.score}%</div></div>`;
-    };
+    const best=clubRows[0], worst=clubRows[clubRows.length-1];
+    const bar = c => `<div class="club-row"><div class="club-name">${c.club}</div>`+
+      `<div class="club-bar"><div class="club-fill ${c.score>=70?'good':c.score>=45?'ok':'bad'}" style="width:${c.score}%"></div></div>`+
+      `<div class="club-score">${c.score}%</div></div>`;
     f.push({
       sev: worst.score < 40 ? 'crit' : 'warn',
       pri: 'clubs',
       title: `Club effectiveness — best ${best.club} (${best.score}%), weakest ${worst.club} (${worst.score}%)`,
-      body: `Weighted: full success 100%, safe-but-not-close 60%, mishit 30%, wasted stroke 0%. Minimum 3 shots per club.` +
-            `<div class="club-table">${clubRows.map(bar).join('')}</div>` +
-            (worst.score < 40
-              ? `Your ${worst.club} is scoring ${worst.score}% against ${best.score}% for the ${best.club}. That gap is worth more than any swing change: either give it a dedicated session or take it out of the bag until it earns a place.`
-              : `Lean on the ${best.club} when the hole demands a shot you must pull off.`),
-      fix: worst.score < 40 ? `Dedicate one full session to the ${worst.club} alone — 40 balls, nothing else — or replace it off the tee with the ${best.club}.` : null
+      body: `Weighted: target hit with a clean strike 100%, one of the two 60%, neither 30%, wasted stroke 0%. Minimum 3 shots.`+
+            `<div class="club-table">${clubRows.map(bar).join('')}</div>`+
+            (worst.score<40 ? `Your ${worst.club} is scoring ${worst.score}% against ${best.score}% for the ${best.club}. That gap is worth more than any swing change.` : ''),
+      fix: worst.score<40 ? `One full session on the ${worst.club} alone \u2014 40 balls, nothing else \u2014 or take it out of the bag until it earns a place.` : null
     });
-  }
-
-  // --- tee shots ---
-  if(teeShots.filter(z=>z.out).length >= 4){
-    const graded = teeShots.filter(z=>z.out);
-    const inPlay = graded.filter(z=>GOODOUT(z.out));
-    const trouble = tally(graded.filter(z=>!GOODOUT(z.out)), z=>z.out);
-    const pct = Math.round(100*inPlay.length/graded.length);
-    f.push({
-      sev: pct < 40 ? 'crit' : pct < 60 ? 'warn' : 'good',
-      title: `Tee shots in play: ${inPlay.length}/${graded.length} (${pct}%)`,
-      body: pct < 60
-        ? `Trouble found: ${tstr(trouble)}. Every one of these forces a recovery before the hole even starts.`
-        : `Keeping the ball in play off the tee is doing the heavy lifting for your scores.`,
-      fix: pct < 60 ? `Find your go-to club (Key 10). If the driver's misses cost more than its yards gain, tee off with something you can predict.` : null
-    });
-    const shape = tally(graded.filter(z=>z.imp2 && z.imp2!=='straight'), z=>z.imp2);
-    const L=(shape.hook||0)+(shape.left||0), R=(shape.slice||0)+(shape.right||0);
-    if(L>=2 && R>=2 && Math.abs(L-R)<=1){
-      f.push({ sev:'crit', title:`Two-way miss off the tee (${R} right, ${L} left)`,
-        body:`Neither side is safe, so you cannot aim away from trouble and course management cannot protect you. This matters more than either fault on its own.`,
-        fix:`Do not chase a fix mid-round. Take the club whose miss you can predict. In practice: 20 balls feet-together for centre contact, then rebuild.` });
-    }
-  }
-
-  // --- approach shots ---
-  if(apprShots.filter(z=>z.out).length >= 3){
-    const graded = apprShots.filter(z=>z.out);
-    const green = graded.filter(z=>z.out==='green');
-    const pct = Math.round(100*green.length/graded.length);
-    const missWhere = tally(graded.filter(z=>z.out!=='green'), z=>z.out);
-    f.push({
-      sev: pct < 30 ? 'crit' : pct < 50 ? 'warn' : 'good',
-      title: `Greens hit from approach: ${green.length}/${graded.length} (${pct}%)`,
-      body: pct < 50
-        ? `Missing into: ${tstr(missWhere)}. Where you miss matters as much as how often \u2014 short-siding into bunkers or trees turns a bogey into a double.`
-        : `Approach play is putting you on the surface and taking the short game out of the equation.`,
-      fix: pct < 50 ? `Aim at the fattest part of the green, never the flag. 20 approaches naming the safe quadrant out loud before each ball.` : null
-    });
-    const dist = tally(graded.filter(z=>z.imp2==='short'||z.imp2==='long'), z=>z.imp2);
-    const sh=dist.short||0, lo=dist.long||0;
-    if(sh>=1 && lo>=1 && Math.abs(sh-lo)<=1){
-      f.push({ sev:'warn', title:`Approach distance scatter (${sh} short, ${lo} long)`,
-        body:`Missing both short and long means the yardage itself is unreliable, not your aim. A bias you can club around; scatter you cannot.`,
-        fix:`Carry ladder: 10 balls each with three irons, record AVERAGE carry and discard your two best. Club off that number.` });
-    } else if(sh > lo && sh >= 2){
-      f.push({ sev:'warn', title:`${sh} approaches came up short`,
-        body:`Systematic under-clubbing \u2014 Key 5. Short is also the worst miss, bringing front bunkers and false fronts into play.`,
-        fix:`Take one more club than feels right on 15 approach shots and note where they finish.` });
-    }
-    const strike = tally(graded.filter(z=>z.imp1 && z.imp1!=='good'), z=>z.imp1);
-    if(Object.keys(strike).length && (strike.thin||0)+(strike.fat||0)+(strike.air||0) >= 3){
-      f.push({ sev:'warn', title:`Approach strike: ${tstr(strike)}`,
-        body:`Poor contact costs distance before aim matters \u2014 often the real reason approaches finish short.`,
-        fix:`Line drill: divot must START on the line, never behind it. 20 reps before hitting full shots.` });
-    }
-  }
-
-  // --- misread vs stroke on putts ---
-  const slopeMiss = puttAll.filter(s=>s.misreadSlope);
-  if(slopeMiss.length >= 2){
-    const up = slopeMiss.filter(s=>s.slopeDir==='up').length;
-    const dn = slopeMiss.filter(s=>s.slopeDir==='down').length;
-    let read, drill;
-    if(up > dn){
-      read = `Mostly UPHILL putts (${up} of ${slopeMiss.length}). Uphill putts need noticeably more pace than they look, and under-reading them leaves you short every time \u2014 which then feeds the three-putt count.`;
-      drill = `Uphill pace drill: 15 putts from 25ft straight uphill, every one must finish past the hole. You are recalibrating what "firm" feels like.`;
-    } else if(dn > up){
-      read = `Mostly DOWNHILL putts (${dn} of ${slopeMiss.length}). Downhill is where speed errors are punished hardest \u2014 run one 5ft past and the comeback is the same putt again.`;
-      drill = `Downhill control: 15 putts from 20ft downhill aiming to die at the hole, using a shorter stroke rather than a decelerating one.`;
-    } else {
-      read = `Split evenly uphill and downhill (${up}/${dn}) \u2014 you are reading slope magnitude rather than direction wrong, which is a green-reading habit rather than a stroke fault.`;
-      drill = `Read from the low side and pick a landing spot, not a line. 15 breaking putts, commit to the read before setting up.`;
-    }
-    f.push({
-      sev: slopeMiss.length >= 3 ? 'crit' : 'warn',
-      title: `${slopeMiss.length} putts where you misread the SLOPE`,
-      body: read,
-      fix: drill
-    });
-  }
-
-  const misreads = puttAll.filter(s=>s.misread);
-  if(misreads.length >= 2){
-    const strokeMiss = puttAll.filter(s=>s.out1 && s.out1!=='holed' && s.out1!=='gimme' && !s.misread).length;
-    f.push({
-      sev: 'warn',
-      title: `${misreads.length} putts you marked as misread`,
-      body: strokeMiss > misreads.length
-        ? `Still, ${strokeMiss} other putts missed without a misread \u2014 so stroke and speed are costing you more than green-reading is. Fix the stroke first.`
-        : `Green-reading is your main putting leak rather than the stroke itself \u2014 a different practice problem entirely.`,
-      fix: misreads.length >= strokeMiss
-        ? `Read from the low side and pick a spot 12in ahead of the ball to roll it over. 15 breaking putts, commit to the read before you set up.`
-        : `Work on strike and speed first; the reads will look better once the ball rolls at a consistent pace.`
-    });
-  }
-
-  // ---------- HOLE TYPE & STROKE INDEX ----------
-  const scored = H.filter(h => h.score!=='' && h.par!=='');
-  if(scored.length >= 6){
-    const rel = h => (parseInt(h.score)||0) - (parseInt(h.par)||0);
-    const classify = h => {
-      const par = parseInt(h.par), y = parseInt(h.yards);
-      if(par===3) return 'Par 3';
-      if(par===5) return 'Par 5';
-      if(par===4) return isNaN(y) ? 'Par 4' : (y > 400 ? 'Long par 4 (>400y)' : 'Short par 4 (\u2264400y)');
-      return 'Other';
-    };
-    const groups = {};
-    scored.forEach(h => {
-      const k = classify(h);
-      groups[k] = groups[k] || {n:0, over:0, holes:[]};
-      groups[k].n++; groups[k].over += rel(h); groups[k].holes.push(h.n);
-    });
-    const rows = Object.entries(groups).filter(([,g])=>g.n>=2)
-      .map(([k,g])=>({type:k, n:g.n, avg: g.over/g.n}))
-      .sort((a,b)=>b.avg-a.avg);
-    if(rows.length >= 2){
-      const worst = rows[0], best = rows[rows.length-1];
-      const fmt = v => (v>0?'+':'') + v.toFixed(1);
-      const list = rows.map(r=>`${r.type}: ${fmt(r.avg)} over par (${r.n} holes)`).join('<br>');
-      const anyY = scored.some(h=>h.yards);
-      f.push({
-        sev: worst.avg - best.avg >= 1 ? 'warn' : 'good',
-        title: `Hole types: worst on ${worst.type} (${fmt(worst.avg)}), best on ${best.type} (${fmt(best.avg)})`,
-        body: `${list}${anyY ? '' : '<br><i>Add yardages to split par 4s into long and short.</i>'}` +
-              (worst.avg - best.avg >= 1
-                ? `<br>A gap this size is a strategy signal, not a swing one \u2014 ${worst.type} holes need a different plan, usually a more conservative one off the tee.`
-                : ''),
-        fix: null
-      });
-    }
-
-    // stroke index: are the hard holes actually the ones hurting you?
-    const withSI = scored.filter(h => !isNaN(parseInt(h.si)));
-    if(withSI.length >= 8){
-      const hard = withSI.filter(h => parseInt(h.si) <= 6);
-      const easy = withSI.filter(h => parseInt(h.si) >= 13);
-      if(hard.length >= 2 && easy.length >= 2){
-        const ha = hard.reduce((a,h)=>a+rel(h),0)/hard.length;
-        const ea = easy.reduce((a,h)=>a+rel(h),0)/easy.length;
-        const fmt = v => (v>0?'+':'') + v.toFixed(1);
-        f.push({
-          sev: ea >= ha ? 'crit' : 'good',
-          title: `Stroke index: hardest holes ${fmt(ha)}, easiest holes ${fmt(ea)}`,
-          body: ea >= ha
-            ? `You are dropping as much on the EASIEST holes (SI 13-18) as on the hardest. That is the clearest possible sign this is concentration and course management rather than ball-striking \u2014 the easy holes should be where you take your shots back, and instead they are costing you.`
-            : `Damage is concentrated on the genuinely hard holes, which is how it should be. You get your handicap shots there \u2014 take a bogey and move on rather than forcing a par.`,
-          fix: ea >= ha ? `On SI 13-18 holes, commit to a bogey-proof plan: safe club off the tee, aim at the middle of the green, two putts. Do not attack them.` : null
-        });
-      }
-    }
   }
 
   // ---------- TEE vs APPROACH BLAME SPLIT ----------
@@ -2762,7 +3014,12 @@ function diagnose(holes, gearDownIn){
   }
 
   // ---------- PENALTIES ----------
-  const penaltyHoles = H.filter(h => h.teeShot==='o' || h.esz==='o' || h.sz==='o');
+  // the AVOIDABLE block already charges penalties logged shot-by-shot, so only count
+  // holes marked with the quick O marker that have no shot-level penalty behind them
+  const shotLevelPen = h =>
+    (h.zoneShots||[]).some(z => isNonShot(z.type) || z.outcome==='penalty' || z.outcome==='oob') ||
+    (h.shots||[]).some(x => isNonShot(x.type) || x.outcome==='penalty' || x.outcome==='oob');
+  const penaltyHoles = H.filter(h => (h.teeShot==='o' || h.esz==='o' || h.sz==='o') && !shotLevelPen(h));
   lost.penalty += penaltyHoles.length;
   if(penaltyHoles.length){
     f.push({
@@ -3284,10 +3541,18 @@ function buildRoundReport(){
       if(!z.club && !z.imp1 && !z.imp2 && !z.out) return;
       const bits = [i===0 ? 'tee shot' : `approach ${i}`];
       if(z.club) bits.push(`club ${z.club}`);
+      if(z.dist) bits.push(`from ${DIST_LABEL[z.dist]||z.dist}`);
+      if(z.target) bits.push(`target ${z.target}`);
+      if(z.impact) bits.push(`impact ${z.impact}`);
+      if(z.shape) bits.push(`shape ${z.shape}`);
+      if(z.position) bits.push(`position ${z.position}`);
+      if(z.greenPos) bits.push(`on green ${z.greenPos}`);
+      if(z.shortSide==='yes') bits.push('SHORT-SIDED');
+      if(z.committed==='no') bits.push('NOT COMMITTED');
       if(z.surface||z.texture) bits.push(`lie ${[z.surface,z.texture].filter(Boolean).join('/')}`);
       if(z.imp1) bits.push(`impact ${z.imp1}`);
       if(z.imp2) bits.push(`shape ${z.imp2}`);
-      if(z.out)  bits.push(`outcome ${z.out.toUpperCase()}`);
+      if(z.outcome) bits.push(`outcome ${z.outcome.toUpperCase()}`);
       L.push(`      ${bits.join(', ')}`);
     });
     (h.shots||[]).forEach((sh,i) => {
@@ -3301,6 +3566,7 @@ function buildRoundReport(){
       if(sh.imp)  bits.push(`impact ${sh.imp}`);
       if(sh.out1) bits.push(`outcome ${sh.out1}`);
       if(sh.out2) bits.push(`miss ${sh.out2}`);
+      if(sh.type==='lag' || (isGreenside(sh.type) && ZONE_CIRCLE[sh.dist])) bits.push(inCircle(sh) ? 'IN CIRCLE' : 'outside circle');
       if(sh.misread) bits.push('MISREAD LINE');
       if(sh.misreadSlope) bits.push('MISREAD SLOPE' + (sh.slopeDir?' ('+sh.slopeDir+')':''));
       L.push(`      ${bits.join(', ')}`);
@@ -3418,6 +3684,47 @@ document.getElementById('saveBtn').addEventListener('click', saveAndClose);
 document.getElementById('startRoundBtn').addEventListener('click', ()=>{ freshRound(); setRoundActive(true); });
 document.getElementById('exportBtn').addEventListener('click', ()=>{ upsertHistory(); exportRound(); });
 // which preset a saved round came from, so the picker can show it again
+const COURSE_PRESETS = {
+  'coombe-hill-white': {course:'Coombe Hill', tee:'White', rating:71.6, slope:121,
+    par:[4,4,4,5,5,3,4,4,3, 4,4,3,4,4,5,4,3,4], si:[17,7,3,9,5,15,11,1,13, 6,2,12,16,8,14,4,18,10],
+    yards:[316,364,410,492,451,176,347,413,184, 436,407,187,337,338,494,396,142,387]},
+  'coombe-hill-yellow': {course:'Coombe Hill', tee:'Yellow', rating:70.6, slope:118,
+    par:[4,4,4,5,5,3,4,4,3, 4,4,3,4,4,5,4,3,4], si:[17,7,3,9,5,15,11,1,13, 6,2,12,16,8,14,4,18,10],
+    yards:[290,340,400,458,445,161,330,396,164, 424,391,165,320,315,487,380,128,371]},
+  'malden-black': {course:'Malden', tee:'Black', rating:73.3, slope:96,
+    par:[4,3,4,3,4,4,4,4,4, 5,4,3,4,3,5,5,4,4], si:[17,15,3,11,13,9,7,1,5, 12,4,16,2,10,14,6,18,8],
+    yards:[328,162,437,164,333,376,343,460,423, 474,387,150,425,176,489,508,277,383]},
+  'el-valle-yellow': {course:'El Valle (Murcia)', tee:'Yellow', rating:71.0, slope:120,
+    par:[4,4,5,4,4,3,5,4,3, 4,4,3,4,4,3,5,4,4], si:[8,2,5,16,10,13,6,7,9, 17,18,11,1,14,15,3,12,4],
+    yards:[341,437,495,343,331,199,557,348,182, 338,284,179,362,308,172,541,390,352]},
+  'rac-old-yellow': {course:'RAC Old Course', tee:'Yellow', rating:73.7, slope:100,
+    par:[4,4,3,5,4,4,4,4,4, 5,4,4,3,4,4,4,3,5], si:[11,7,5,15,17,1,13,3,9, 12,6,4,18,16,2,8,14,10],
+    yards:[378,355,177,470,291,437,352,453,399, 441,345,329,136,311,360,364,132,506]},
+  'rac-coronation-yellow': {course:'RAC Coronation', tee:'Yellow', rating:70.1, slope:105,
+    par:[4,3,4,3,4,4,4,5,4, 4,5,3,4,4,3,4,4,4], si:[6,14,8,18,12,16,2,10,4, 11,7,5,13,1,15,3,17,9],
+    yards:[336,184,320,129,324,322,393,498,405, 317,503,189,324,423,182,349,348,364]},
+  'coombe-wood-yellow': {course:'Coombe Wood', tee:'Yellow', rating:65.4, slope:94,
+    par:[5,4,3,4,3,4,4,3,4, 3,4,3,4,3,4,4,3,4], si:[11,15,3,7,13,1,17,5,9, 12,4,14,2,16,6,18,8,10],
+    yards:[482,352,199,350,174,416,320,203,285, 141,385,172,425,126,282,274,136,378]}
+};
+
+function applyPreset(key){
+  const c = COURSE_PRESETS[key];
+  if(!c) return;
+  state.course = c.course;
+  state.tee = c.tee;
+  state.holes.forEach((h,i) => {
+    h.par = String(c.par[i]); h.si = String(c.si[i]); h.yards = String(c.yards[i]);
+  });
+  document.getElementById('course').value = c.course;
+  document.getElementById('tee').value = c.tee;
+  state.holes.forEach(h => autoGrade(h,'esz','shotsEnter', Math.max(1,(parseInt(h.par)||0)-2)));
+  setRoundActive(true);
+  renderHoles(); renderSummary(); renderRoundResults(); renderAnalysisTable(); persist();
+  statusEl.textContent = `Loaded ${c.course} (${c.tee}) — par ${c.par.reduce((a,b)=>a+b,0)}, ${c.yards.reduce((a,b)=>a+b,0)}y.`;
+  setTimeout(()=>statusEl.textContent='', 4000);
+}
+
 function presetKeyFor(course, tee){
   return Object.keys(COURSE_PRESETS).find(k =>
     COURSE_PRESETS[k].course === course && COURSE_PRESETS[k].tee === tee) || '';
@@ -3530,7 +3837,7 @@ document.querySelectorAll('.tab-btn').forEach(btn=>{
 if('serviceWorker' in navigator){
   window.addEventListener('load', ()=>{
     try {
-      const swCode = "\nself.addEventListener('install', e => { self.skipWaiting(); });\nself.addEventListener('activate', e => { self.clients.claim(); });\nself.addEventListener('fetch', e => {\n  if (e.request.method !== 'GET') return;\n  e.respondWith(\n    caches.open('golfscoring-v46b').then(async cache => {\n      const cached = await cache.match(e.request);\n      try {\n        const res = await fetch(e.request);\n        cache.put(e.request, res.clone());\n        return res;\n      } catch (err) {\n        return cached || Response.error();\n      }\n    })\n  );\n});\n";
+      const swCode = "\nself.addEventListener('install', e => { self.skipWaiting(); });\nself.addEventListener('activate', e => { self.clients.claim(); });\nself.addEventListener('fetch', e => {\n  if (e.request.method !== 'GET') return;\n  e.respondWith(\n    caches.open('golfscoring-v61').then(async cache => {\n      const cached = await cache.match(e.request);\n      try {\n        const res = await fetch(e.request);\n        cache.put(e.request, res.clone());\n        return res;\n      } catch (err) {\n        return cached || Response.error();\n      }\n    })\n  );\n});\n";
       const blob = new Blob([swCode], {type:'application/javascript'});
       const swUrl = URL.createObjectURL(blob);
       navigator.serviceWorker.register(swUrl).catch(()=>{});
