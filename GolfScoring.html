@@ -1235,7 +1235,7 @@
     <h1>Round Card</h1>
     <div class="player-bar">
       <span id="playerLabel"></span>
-      <span id="buildTag">v61</span>
+      <span id="buildTag">v65</span>
       <button id="editName">edit</button>
       <button id="newRoundTop">+ New round</button>
     </div>
@@ -1818,11 +1818,13 @@ function autoPuttMark(hole){
   if(hole.shortPuttManual) return;
   const p = parseInt(hole.puttsTotal);
   if(isNaN(p)) return;
-  if(p === 0){ hole.shortPutt = ''; return; }
-  if(p === 1){
-    const longMade = (hole.shots||[]).some(s => s.type==='lag' && s.out1==='holed');
-    hole.shortPutt = longMade ? 'plus' : 'check';
-  }
+  if(p === 0){ hole.shortPutt = ''; return; }   // chipped in, no putt to mark
+  // any completed hole ends with a holed putt, and on all but rare occasions that last
+  // one is inside 4ft - so tick it. Logging the putts themselves overrides this.
+  const graded = (hole.shots||[]).filter(s => isPutt(s.type) && s.out1);
+  if(graded.length) return;                      // syncFromShots knows better
+  const longMade = (hole.shots||[]).some(s => s.type==='lag' && s.out1==='holed');
+  hole.shortPutt = (p === 1 && longMade) ? 'plus' : 'check';
 }
 
 function syncFromShots(hole){
@@ -2179,7 +2181,10 @@ function renderHoles(){
           autoFillLies(hole);
           chainGimmes(hole);
         } else {
+          // zone toggles carry the toggle3 class too but are handled by their own listener,
+          // and they use data-key rather than data-field - never write hole[undefined]
           const field = t.dataset.field;
+          if(!field) return;
           hole[field] = hole[field] === b.dataset.val ? '' : b.dataset.val;
           if(field === 'shortPutt') hole.shortPuttManual = true;
         }
@@ -2978,6 +2983,94 @@ function diagnose(holes, gearDownIn){
             (worst.score<40 ? `Your ${worst.club} is scoring ${worst.score}% against ${best.score}% for the ${best.club}. That gap is worth more than any swing change.` : ''),
       fix: worst.score<40 ? `One full session on the ${worst.club} alone \u2014 40 balls, nothing else \u2014 or take it out of the bag until it earns a place.` : null
     });
+  }
+
+  // ---------- MISREADS: green-reading vs stroke ----------
+  const allPutts = [];
+  H.forEach(h => (h.shots||[]).forEach(sh => { if(isPutt(sh.type)) allPutts.push({...sh, hole:h.n}); }));
+
+  const slopeMiss = allPutts.filter(s=>s.misreadSlope);
+  if(slopeMiss.length >= 2){
+    const up = slopeMiss.filter(s=>s.slopeDir==='up').length;
+    const dn = slopeMiss.filter(s=>s.slopeDir==='down').length;
+    let read, drill;
+    if(up > dn){
+      read = `Mostly UPHILL putts (${up} of ${slopeMiss.length}). Uphill needs noticeably more pace than it looks, and under-reading it leaves you short every time \u2014 which then feeds the three-putt count.`;
+      drill = `Uphill pace drill: 15 putts from 25ft straight uphill, every one must finish past the hole. You are recalibrating what "firm" feels like.`;
+    } else if(dn > up){
+      read = `Mostly DOWNHILL putts (${dn} of ${slopeMiss.length}). Downhill is where speed errors are punished hardest \u2014 run one 5ft past and the comeback is the same putt again.`;
+      drill = `Downhill control: 15 putts from 20ft downhill aiming to die at the hole, using a shorter stroke rather than a decelerating one.`;
+    } else {
+      read = `Split evenly uphill and downhill (${up}/${dn}) \u2014 you are misjudging slope magnitude rather than direction, which is a green-reading habit rather than a stroke fault.`;
+      drill = `Read from the low side and pick a landing spot, not a line. 15 breaking putts, commit to the read before setting up.`;
+    }
+    f.push({ sev: slopeMiss.length >= 3 ? 'crit' : 'warn',
+      title: `${slopeMiss.length} putts where you misread the SLOPE`, body: read, fix: drill });
+  }
+
+  const lineMiss = allPutts.filter(s=>s.misread);
+  if(lineMiss.length >= 2){
+    const strokeMiss = allPutts.filter(s=>s.out1 && !['holed','gimme','close','high'].includes(s.out1) && !s.misread).length;
+    f.push({
+      sev: 'warn',
+      title: `${lineMiss.length} putts you marked as misread`,
+      body: strokeMiss > lineMiss.length
+        ? `Still, ${strokeMiss} other putts missed with no misread \u2014 so stroke and speed are costing you more than green-reading. Fix the stroke first.`
+        : `Green-reading is your main putting leak rather than the stroke itself \u2014 a different practice problem entirely.`,
+      fix: lineMiss.length >= strokeMiss
+        ? `Read from the low side and pick a spot 12in ahead of the ball to roll it over. 15 breaking putts, commit to the read before you set up.`
+        : `Work on strike and speed first; the reads will look better once the ball rolls at a consistent pace.`
+    });
+  }
+
+  // ---------- HOLE TYPE & STROKE INDEX ----------
+  const scoredH = H.filter(h => h.score!=='' && h.par!=='');
+  if(scoredH.length >= 6){
+    const rel = h => (parseInt(h.score)||0) - (parseInt(h.par)||0);
+    const classify = h => {
+      const par = parseInt(h.par), y = parseInt(h.yards);
+      if(par===3) return 'Par 3';
+      if(par===5) return 'Par 5';
+      if(par===4) return isNaN(y) ? 'Par 4' : (y > 400 ? 'Long par 4 (>400y)' : 'Short par 4 (\u2264400y)');
+      return 'Other';
+    };
+    const groups = {};
+    scoredH.forEach(h => { const k=classify(h);
+      groups[k] = groups[k] || {n:0, over:0}; groups[k].n++; groups[k].over += rel(h); });
+    const rows = Object.entries(groups).filter(([,g])=>g.n>=2)
+      .map(([k,g])=>({type:k, n:g.n, avg:g.over/g.n})).sort((a,b)=>b.avg-a.avg);
+    if(rows.length >= 2){
+      const worst=rows[0], best=rows[rows.length-1];
+      const fmt = v => (v>0?'+':'') + v.toFixed(1);
+      const anyY = scoredH.some(h=>h.yards);
+      f.push({
+        sev: worst.avg - best.avg >= 1 ? 'warn' : 'good',
+        title: `Hole types: worst on ${worst.type} (${fmt(worst.avg)}), best on ${best.type} (${fmt(best.avg)})`,
+        body: rows.map(r=>`${r.type}: ${fmt(r.avg)} over par (${r.n} holes)`).join('<br>') +
+              (anyY ? '' : '<br><i>Add yardages to split par 4s into long and short.</i>') +
+              (worst.avg - best.avg >= 1
+                ? `<br>A gap this size is a strategy signal, not a swing one \u2014 ${worst.type} holes need a different plan, usually a more conservative one off the tee.` : ''),
+        fix: null
+      });
+    }
+    const withSI = scoredH.filter(h => !isNaN(parseInt(h.si)));
+    if(withSI.length >= 8){
+      const hard = withSI.filter(h => parseInt(h.si) <= 6);
+      const easy = withSI.filter(h => parseInt(h.si) >= 13);
+      if(hard.length >= 2 && easy.length >= 2){
+        const ha = hard.reduce((a,h)=>a+rel(h),0)/hard.length;
+        const ea = easy.reduce((a,h)=>a+rel(h),0)/easy.length;
+        const fmt = v => (v>0?'+':'') + v.toFixed(1);
+        f.push({
+          sev: ea >= ha ? 'crit' : 'good',
+          title: `Stroke index: hardest holes ${fmt(ha)}, easiest holes ${fmt(ea)}`,
+          body: ea >= ha
+            ? `You are dropping as much on the EASIEST holes (SI 13-18) as on the hardest. That is the clearest possible sign this is concentration and course management rather than ball-striking \u2014 the easy holes should be where you take shots back, and instead they are costing you.`
+            : `Damage is concentrated on the genuinely hard holes, which is how it should be. You get your handicap shots there \u2014 take the bogey and move on rather than forcing a par.`,
+          fix: ea >= ha ? `On SI 13-18 holes commit to a bogey-proof plan: safe club off the tee, middle of the green, two putts. Do not attack them.` : null
+        });
+      }
+    }
   }
 
   // ---------- TEE vs APPROACH BLAME SPLIT ----------
@@ -3837,7 +3930,7 @@ document.querySelectorAll('.tab-btn').forEach(btn=>{
 if('serviceWorker' in navigator){
   window.addEventListener('load', ()=>{
     try {
-      const swCode = "\nself.addEventListener('install', e => { self.skipWaiting(); });\nself.addEventListener('activate', e => { self.clients.claim(); });\nself.addEventListener('fetch', e => {\n  if (e.request.method !== 'GET') return;\n  e.respondWith(\n    caches.open('golfscoring-v61').then(async cache => {\n      const cached = await cache.match(e.request);\n      try {\n        const res = await fetch(e.request);\n        cache.put(e.request, res.clone());\n        return res;\n      } catch (err) {\n        return cached || Response.error();\n      }\n    })\n  );\n});\n";
+      const swCode = "\nself.addEventListener('install', e => { self.skipWaiting(); });\nself.addEventListener('activate', e => { self.clients.claim(); });\nself.addEventListener('fetch', e => {\n  if (e.request.method !== 'GET') return;\n  e.respondWith(\n    caches.open('golfscoring-v65').then(async cache => {\n      const cached = await cache.match(e.request);\n      try {\n        const res = await fetch(e.request);\n        cache.put(e.request, res.clone());\n        return res;\n      } catch (err) {\n        return cached || Response.error();\n      }\n    })\n  );\n});\n";
       const blob = new Blob([swCode], {type:'application/javascript'});
       const swUrl = URL.createObjectURL(blob);
       navigator.serviceWorker.register(swUrl).catch(()=>{});
