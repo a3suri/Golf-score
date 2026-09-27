@@ -600,6 +600,7 @@
     box-shadow:0 1px 0 rgba(0,0,0,.03);
   }
   .summary.five{grid-template-columns:repeat(5,1fr);}
+  .summary.six{grid-template-columns:repeat(3,1fr);}
   .summary .stat.hero .num{color:var(--sand);}
   .stat{text-align:center;}
   .stat .num{
@@ -1041,6 +1042,24 @@
     border-bottom:1px solid var(--paper-line);
   }
 
+  .miss4{
+    display:flex;
+    align-items:center;
+    gap:5px;
+    justify-content:center;
+    margin-top:5px;
+    border:1px solid var(--paper-line);
+    border-radius:6px;
+    padding:4px 5px;
+    font-size:9.5px;
+    font-weight:700;
+    color:var(--ink-soft);
+    background:#fff;
+    cursor:pointer;
+  }
+  .miss4 input{width:14px;height:14px;accent-color:#B4463A;}
+  .miss4.on{border-color:var(--miss);background:#FBE9E6;color:var(--miss);}
+
   .circle-tick{
     display:flex;
     align-items:center;
@@ -1235,7 +1254,7 @@
     <h1>Round Card</h1>
     <div class="player-bar">
       <span id="playerLabel"></span>
-      <span id="buildTag">v65</span>
+      <span id="buildTag">v69</span>
       <button id="editName">edit</button>
       <button id="newRoundTop">+ New round</button>
     </div>
@@ -1424,7 +1443,7 @@ let state = {
     4: { dist:0, downIn:1 }
   },
   holes: Array.from({length:18}, (_,i)=>({
-    n:i+1, par:'', esz:'', sz:'', putts4:'', puttsTotal:'', score:'', shotsEnter:'', shotsDownIn:'', shortPutt:'', yards:'', si:'', teeShot:'', teeMiss:'', done:false, zoneShots:[], shots:[]
+    n:i+1, par:'', esz:'', sz:'', putts4:'', puttsTotal:'', score:'', shotsEnter:'', shotsDownIn:'', shortPutt:'', yards:'', si:'', missedShort:false, teeShot:'', teeMiss:'', done:false, zoneShots:[], shots:[]
   }))
 };
 
@@ -1814,28 +1833,29 @@ function shotToggle(holeN, idx, key, opts, val, extraClass){
   </div>`;
 }
 
+// a missed putt from inside 4ft - the cheapest stroke on the card to win back
+function autoMissedShort(hole){
+  if(hole.missedShortManual) return;
+  const missed = (hole.shots||[]).some(s =>
+    s.type === 'short' && s.out1 && !['holed','gimme','close'].includes(s.out1));
+  if(missed) hole.missedShort = true;
+}
+
 function autoPuttMark(hole){
   if(hole.shortPuttManual) return;
   const p = parseInt(hole.puttsTotal);
   if(isNaN(p)) return;
-  if(p === 0){ hole.shortPutt = ''; return; }   // chipped in, no putt to mark
-  // any completed hole ends with a holed putt, and on all but rare occasions that last
-  // one is inside 4ft - so tick it. Logging the putts themselves overrides this.
-  const graded = (hole.shots||[]).filter(s => isPutt(s.type) && s.out1);
-  if(graded.length) return;                      // syncFromShots knows better
+  // two putts is the goal: 0, 1 or 2 is a tick, 3 or more is a miss
   const longMade = (hole.shots||[]).some(s => s.type==='lag' && s.out1==='holed');
-  hole.shortPutt = (p === 1 && longMade) ? 'plus' : 'check';
+  if(p <= 2) hole.shortPutt = (p === 1 && longMade) ? 'plus' : 'check';
+  else       hole.shortPutt = 'x';
 }
 
 function syncFromShots(hole){
   const shots = (hole.shots||[]).filter(s => s.type);
   if(!shots.length) return;
-  const taps = shots.filter(s => s.type === 'short' && s.out1);
-  if(taps.length){
-    hole.shortPutt = taps.some(s => s.out1 !== 'holed' && s.out1 !== 'gimme') ? 'x' : 'check';
-  } else if(shots.some(s => s.type === 'gimme' || s.out1 === 'gimme')){
-    hole.shortPutt = 'check';
-  }
+  // the putt marker is driven by the putt count (2-putt = goal), so only upgrade it
+  // to '+' when a long putt was actually holed
   if(shots.some(s => s.type==='lag' && s.out1 === 'holed')) hole.shortPutt = 'plus';
 }
 
@@ -2000,6 +2020,10 @@ function renderHoles(){
             ${togglePuttBtns(h)}
             <input class="shots-input" inputmode="numeric" placeholder="Putts" value="${h.puttsTotal}" data-hole="${h.n}" data-field="puttsTotal" />
             <div class="shots-cap">of the ${h.shotsDownIn||'–'} above</div>
+            <label class="miss4 ${h.missedShort?'on':''}">
+              <input type="checkbox" class="miss4-box" data-hole="${h.n}" ${h.missedShort?'checked':''} />
+              Missed &lt;4'
+            </label>
           </div>
         </div>
       </div>
@@ -2060,6 +2084,14 @@ function renderHoles(){
       if(sel.dataset.scope === 'zone'){ ensureZoneShots(hole); if(hole.zoneShots[idx]) hole.zoneShots[idx].club = sel.value; }
       else { ensureShots(hole); if(hole.shots[idx]) hole.shots[idx].club = sel.value; }
       persist();
+    });
+  });
+
+  holesEl.querySelectorAll('.miss4-box').forEach(cb=>{
+    cb.addEventListener('change', ()=>{
+      const hole = state.holes.find(x=>x.n === +cb.dataset.hole);
+      if(hole){ hole.missedShort = cb.checked; hole.missedShortManual = true; }
+      rerender();
     });
   });
 
@@ -2178,6 +2210,7 @@ function renderHoles(){
           }
           syncFromShots(hole);
           autoPuttMark(hole);
+          autoMissedShort(hole);
           autoFillLies(hole);
           chainGimmes(hole);
         } else {
@@ -2222,6 +2255,7 @@ function renderHoles(){
       if(field === 'shotsDownIn' || field === 'puttsTotal'){
         ensureShots(hole);
         autoPuttMark(hole);
+        autoMissedShort(hole);
       }
       if(field === 'shotsEnter'){
         ensureZoneShots(hole);
@@ -2261,6 +2295,7 @@ function renderSummary(){
   const szSeen = holes.filter(h=>h.sz!=='').length;
   const totalPutts = holes.reduce((s,h)=> s + (parseInt(h.puttsTotal)||0), 0);
   const penalties = holes.filter(h=> h.esz==='o' || h.sz==='o').length;
+  const missed4 = holes.filter(h=> h.missedShort).length;
 
   const eszPct = eszSeen ? Math.round(100*eszHit/eszSeen) : 0;
   const szPct = szSeen ? Math.round(100*szHit/szSeen) : 0;
@@ -2273,13 +2308,14 @@ function renderSummary(){
   const hcp = parseInt(state.handicap);
   const netStr = (holesWithScore >= 18 && !isNaN(hcp)) ? ` &middot; Net ${totalScore - hcp}` : '';
 
-  summaryEl.className = 'summary five';
+  summaryEl.className = 'summary six';
   summaryEl.innerHTML = `
     <div class="stat hero"><div class="num">${holesWithScore ? totalScore : '–'}</div><div class="lbl">Total score${toParStr?` (${toParStr})`:''}${netStr}</div></div>
     <div class="stat"><div class="num">${eszPct}%</div><div class="lbl">${dist} rate</div></div>
     <div class="stat"><div class="num">${szPct}%</div><div class="lbl">Down in ${downIn}</div></div>
     <div class="stat"><div class="num">${totalPutts||'–'}</div><div class="lbl">Total putts</div></div>
     <div class="stat"><div class="num">${penalties}</div><div class="lbl">Lost ball / penalty</div></div>
+    <div class="stat"><div class="num" style="color:${missed4 ? 'var(--miss)' : 'var(--turf)'}">${missed4}</div><div class="lbl">Missed &lt;4'</div></div>
   `;
 }
 
@@ -2294,6 +2330,7 @@ function renderRoundResults(){
   const box3plus = holes.filter(h=>h.shortPutt==='plus').length;
   const box3x = holes.filter(h=>h.shortPutt==='x').length;
   const box4 = holes.filter(h=>parseInt(h.puttsTotal)===1).length;
+  const missedShortCount = holes.filter(h=>h.missedShort).length;
   const threePlusInPos = holes.filter(h=> (parseInt(h.puttsTotal)||0) >= 3 && h.esz==='check').length;
 
   const feedbackA = Math.max(0, playedCount - box1);
@@ -2310,7 +2347,7 @@ function renderRoundResults(){
     <div class="rr-group-title">FEEDBACK</div>
     <div class="rr-row"><div class="rr-num">${feedbackA}</div><div class="rr-label">Times I was out of position to score</div></div>
     <div class="rr-row"><div class="rr-num">${feedbackB}</div><div class="rr-label">Times I did not score when in position</div></div>
-    <div class="rr-row"><div class="rr-num">${box3x}</div><div class="rr-label">Putts missed inside 4ft</div></div>
+    <div class="rr-row"><div class="rr-num">${missedShortCount}</div><div class="rr-label">Putts missed inside 4ft</div></div>
     <div class="rr-row"><div class="rr-num">${threePlusInPos}</div><div class="rr-label">3+ putts when in position</div></div>
   `;
 }
@@ -2341,7 +2378,7 @@ function diagnose(holes, gearDownIn){
     const shortPart = h.shortPutt === 'x' ? 1 : 0;
     lost.lag += Math.max(0, extra - shortPart);
   });
-  lost.shortPutt += shortMiss.length;
+  // missed short putts are charged by the Key 1 block below
 
   if(lagOnly.length){
     f.push({
@@ -2460,56 +2497,15 @@ function diagnose(holes, gearDownIn){
       body:`Strokes gained outright \u2014 these are the ones that offset a bad hole elsewhere.`, fix:null });
   }
 
-  // --- SHORT PUTTS <4ft ---
-  const tapGraded = tapShots.filter(s=>s.out1);
-  if(tapGraded.length){
-    const made = tapGraded.filter(s=>s.out1==='holed');
-    const missed = tapGraded.filter(s=>s.out1!=='holed' && s.out1!=='gimme');
-    if(missed.length){
-      const dir = tally(missed, s=>s.out1);
-      const dirL = tally(missed, s=>s.out2);
-      const conn = tally(missed.filter(s=>s.imp&&s.imp!=='good'), s=>s.imp);
-      const sh=dir.short||0, le=dirL.left||0, ri=dirL.right||0;
-      let read, drill;
-      const cTop = topKey(conn);
-      if(cTop && (cTop[0]==='open'||cTop[0]==='closed')){
-        read = `Face control is the cause \u2014 ${tstr(conn)}. Inside 4ft the face at impact accounts for almost all of the start line, so this is a face problem, not a read problem.`;
-        drill = `Face-square drill: 25 putts from 3ft, hold the finish and check the face is square to target on every one.`;
-      } else if(cTop && (cTop[0]==='heel'||cTop[0]==='toe')){
-        read = `Off-centre strike is the cause \u2014 ${tstr(conn)}. Heel and toe contact twists the face at impact and deadens the roll.`;
-        drill = `Tee gate: two tees barely wider than the putter head, 25 putts from 3ft without touching either.`;
-      } else if(sh >= le + ri){
-        read = `Misses are coming up SHORT \u2014 decelerating through impact. Inside 4ft the ball must be firm enough to hold its line.`;
-        drill = `Back-of-cup drill: from 3ft, every putt must reach the back of the cup. 25 in a row.`;
-      } else if(le > ri){
-        read = `Misses bias LEFT \u2014 typically a pull, shoulders turning through or the face closing.`;
-        drill = `Gate drill: two tees a putter-head width apart 6in ahead. 25 from 3ft clean.`;
-      } else if(ri > le){
-        read = `Misses bias RIGHT \u2014 usually the face left open, often from a decelerating or handsy stroke.`;
-        drill = `Gate drill plus face check: 25 from 3ft, confirm square face at the finish.`;
-      } else {
-        read = `Misses are scattered in direction \u2014 strike quality rather than a repeating aim or path fault.`;
-        drill = `Coin drill: coin under the ball's equator, roll it without hopping. 20 reps from 3ft.`;
-      }
-      f.push({
-        sev: missed.length >= 2 ? 'crit' : 'warn',
-        title: `${missed.length} missed from inside 4ft (${made.length}/${tapGraded.length} made)`,
-        body: `Miss pattern: ${tstr(dir)}${tstr(dirL)?', '+tstr(dirL):''}. ${read} Key 1 \u2014 the cheapest strokes on the card to win back.${gimmeShots.length ? ` (${gimmeShots.length} gimme${gimmeShots.length>1?'s':''} excluded \u2014 your real make% under tournament rules would be tested more than this.)` : ''}`,
-        fix: drill
-      });
-    } else if(made.length >= 3){
-      f.push({ sev:'good', title:`Short putting perfect (${made.length}/${made.length} inside 4ft)`,
-        body:`Nothing lost from tap-in range.${gimmeShots.length ? ` Note: ${gimmeShots.length} further putt${gimmeShots.length>1?'s were':' was'} conceded, so this is not a full test.` : ''}`, fix:null });
+  // --- SHORT PUTTS: only the positive case here; misses are reported by the Key 1 block ---
+  if(tapShots.length){
+    const tapGraded2 = tapShots.filter(s=>s.out1);
+    const made2 = tapGraded2.filter(s=>s.out1==='holed' || s.out1==='gimme' || s.out1==='close');
+    if(tapGraded2.length && made2.length === tapGraded2.length && made2.length >= 3){
+      f.push({ sev:'good', title:`Short putting perfect (${made2.length}/${tapGraded2.length} inside 4ft)`,
+        body:`Nothing lost from tap-in range.${gimmeShots.length ? ` Note: ${gimmeShots.length} further putt${gimmeShots.length>1?'s were':' was'} conceded, so this is not a full test.` : ''}`,
+        fix:null });
     }
-  }
-
-  if(gimmeShots.length >= 4 && !tapShots.filter(s=>s.out).length){
-    f.push({
-      sev:'warn',
-      title:`${gimmeShots.length} putts conceded, none actually holed out`,
-      body:`Gimmes hide the exact skill that Key 1 targets. If short putting is a known weakness, conceding them means you never find out where you stand \u2014 and it will show up the moment you play a medal or a match that is putted out.`,
-      fix:`Putt everything out for a few rounds, even inside 3ft. You need the honest number before you can fix it.`
-    });
   }
 
   // --- GREENSIDE TURF: connection then outcome ---
@@ -2983,6 +2979,54 @@ function diagnose(holes, gearDownIn){
             (worst.score<40 ? `Your ${worst.club} is scoring ${worst.score}% against ${best.score}% for the ${best.club}. That gap is worth more than any swing change.` : ''),
       fix: worst.score<40 ? `One full session on the ${worst.club} alone \u2014 40 balls, nothing else \u2014 or take it out of the bag until it earns a place.` : null
     });
+  }
+
+  // ---------- MISSED SHORT PUTTS: Key 1, the cheapest strokes on the card ----------
+  const missed4Holes = H.filter(h => h.missedShort);
+  if(missed4Holes.length){
+    const played = H.filter(h => h.score!=='' || h.puttsTotal!=='').length || 18;
+    const rate = Math.round(100*missed4Holes.length/Math.max(1,played));
+    // where the misses went, if the putts were logged
+    const dir = {};
+    H.forEach(h => (h.shots||[]).forEach(sh => {
+      if(sh.type==='short' && sh.out1 && !['holed','gimme','close'].includes(sh.out1)){
+        const k = sh.out2 && sh.out2!=='inline' ? sh.out2 : sh.out1;
+        dir[k] = (dir[k]||0)+1;
+      }}));
+    const conn = {};
+    H.forEach(h => (h.shots||[]).forEach(sh => {
+      if(sh.type==='short' && sh.imp && sh.imp!=='good') conn[sh.imp]=(conn[sh.imp]||0)+1; }));
+    const top = Object.entries(conn).sort((a,b)=>b[1]-a[1])[0];
+    let read, drill;
+    if(top && (top[0]==='open'||top[0]==='closed')){
+      read = `Face control is the cause \u2014 ${tstr(conn)}. Inside 4ft the face at impact decides almost the whole start line, so this is a face problem, not a read problem.`;
+      drill = `Face-square drill: 25 putts from 3ft, hold the finish and check the face is square to target on every one.`;
+    } else if(top && (top[0]==='heel'||top[0]==='toe')){
+      read = `Off-centre strike is the cause \u2014 ${tstr(conn)}. Heel and toe contact twists the face and deadens the roll.`;
+      drill = `Tee gate: two tees barely wider than the putter head, 25 putts from 3ft without touching either.`;
+    } else if((dir.short||0) >= Math.max(1,(dir.left||0)+(dir.right||0))){
+      read = `Misses are coming up SHORT \u2014 decelerating through impact. Inside 4ft the ball has to be struck firmly enough to hold its line.`;
+      drill = `Back-of-cup drill: from 3ft, every putt must reach the back of the cup. 25 in a row before you leave.`;
+    } else if((dir.left||0) > (dir.right||0)){
+      read = `Misses bias LEFT \u2014 typically a pull from the shoulders turning through, or the face closing.`;
+      drill = `Gate drill: two tees a putter-head width apart 6in ahead. 25 from 3ft without a touch.`;
+    } else if((dir.right||0) > (dir.left||0)){
+      read = `Misses bias RIGHT \u2014 usually the face left open, often from a decelerating or handsy stroke.`;
+      drill = `Gate drill plus face check: 25 from 3ft, confirm a square face at the finish.`;
+    } else {
+      read = `These are the cheapest strokes on the card and they are going one at a time. Log the putt detail (impact and miss direction) and the next round will tell you whether it is face, strike or pace.`;
+      drill = `Circle drill: 8 balls at 3ft around the hole, all 8 must drop before you leave. Three rounds of it.`;
+    }
+    f.push({
+      sev: missed4Holes.length >= 3 ? 'crit' : 'warn',
+      pri: 'threeputt',
+      title: `${missed4Holes.length} missed putt${missed4Holes.length>1?'s':''} from inside 4ft (${rate}% of holes)`,
+      body: `Hole${missed4Holes.length>1?'s':''} ${missed4Holes.map(h=>h.n).join(', ')}. ` +
+            `<b>That is ${missed4Holes.length} shot${missed4Holes.length>1?'s':''} off your score for no distance gained and no skill tested.</b> ` +
+            `${Object.keys(dir).length?`Miss pattern: ${tstr(dir)}. `:''}${read} This is Key 1.`,
+      fix: drill
+    });
+    lost.shortPutt += missed4Holes.length;
   }
 
   // ---------- MISREADS: green-reading vs stroke ----------
@@ -3519,7 +3563,7 @@ function loadFromHistory(id){
   }
   if(!state.currentGear){ state.currentGear = 1; }
   if(!state.id){ state.id = id; }
-  state.holes = (state.holes || []).map(h => ({ shotsEnter:'', shotsDownIn:'', shortPutt:'', yards:'', si:'', yards:'', si:'', teeShot:'', teeMiss:'', done:false, zoneShots:[], shots:[], ...h }));
+  state.holes = (state.holes || []).map(h => ({ shotsEnter:'', shotsDownIn:'', shortPutt:'', yards:'', si:'', yards:'', si:'', missedShort:false, teeShot:'', teeMiss:'', done:false, zoneShots:[], shots:[], ...h }));
   document.getElementById('name').value = state.name || '';
   document.getElementById('course').value = state.course || '';
   document.getElementById('date').value = state.date || '';
@@ -3553,7 +3597,7 @@ async function load(){
   }
   if(!state.currentGear){ state.currentGear = 1; }
   if(!state.id){ state.id = genId(); }
-  state.holes = (state.holes || []).map(h => ({ shotsEnter:'', shotsDownIn:'', shortPutt:'', yards:'', si:'', yards:'', si:'', teeShot:'', teeMiss:'', done:false, zoneShots:[], shots:[], ...h }));
+  state.holes = (state.holes || []).map(h => ({ shotsEnter:'', shotsDownIn:'', shortPutt:'', yards:'', si:'', yards:'', si:'', missedShort:false, teeShot:'', teeMiss:'', done:false, zoneShots:[], shots:[], ...h }));
   document.getElementById('name').value = state.name || '';
   document.getElementById('course').value = state.course || '';
   document.getElementById('date').value = state.date || '';
@@ -3930,7 +3974,7 @@ document.querySelectorAll('.tab-btn').forEach(btn=>{
 if('serviceWorker' in navigator){
   window.addEventListener('load', ()=>{
     try {
-      const swCode = "\nself.addEventListener('install', e => { self.skipWaiting(); });\nself.addEventListener('activate', e => { self.clients.claim(); });\nself.addEventListener('fetch', e => {\n  if (e.request.method !== 'GET') return;\n  e.respondWith(\n    caches.open('golfscoring-v65').then(async cache => {\n      const cached = await cache.match(e.request);\n      try {\n        const res = await fetch(e.request);\n        cache.put(e.request, res.clone());\n        return res;\n      } catch (err) {\n        return cached || Response.error();\n      }\n    })\n  );\n});\n";
+      const swCode = "\nself.addEventListener('install', e => { self.skipWaiting(); });\nself.addEventListener('activate', e => { self.clients.claim(); });\nself.addEventListener('fetch', e => {\n  if (e.request.method !== 'GET') return;\n  e.respondWith(\n    caches.open('golfscoring-v69').then(async cache => {\n      const cached = await cache.match(e.request);\n      try {\n        const res = await fetch(e.request);\n        cache.put(e.request, res.clone());\n        return res;\n      } catch (err) {\n        return cached || Response.error();\n      }\n    })\n  );\n});\n";
       const blob = new Blob([swCode], {type:'application/javascript'});
       const swUrl = URL.createObjectURL(blob);
       navigator.serviceWorker.register(swUrl).catch(()=>{});
